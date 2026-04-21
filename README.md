@@ -1,33 +1,44 @@
-# MedRoute MVP
+# MedRoute
 
-MVP веб-сервиса онко-навигации и адресного сбора средств.
-
-Ключевая идея: не просто сбор денег, а понятный маршрут лечения:
-
-`Диагноз -> AI-разбор -> Roadmap этапов -> Стоимость -> Сбор на конкретный этап`.
+Веб-сервис онко-навигации и сопровождения пациента с ролевой моделью и внутренними кабинетами.
 
 ## Что реализовано
 
 - Продающий лендинг в медицинском high-tech стиле (`/`)
-- Создание кейса пациента (`/app/start`)
-- Рабочий кабинет кейса с roadmap, клиниками, врачами и стоимостью (`/app/cases/[id]`)
-- Отдельный экран этапа лечения (`/app/cases/[id]/stages/[stageId]`)
-- Отдельный экран сбора на текущий этап (`/app/cases/[id]/fundraising`)
+- Авторизация и регистрация (`/auth/login`, `/auth/register`)
+- Роли: `patient`, `doctor`, `admin`
+- Кабинет пациента (`/app/patient`) и создание кейса (`/app/start`)
+- Кабинет врача (`/app/doctor`) и рабочая карточка назначенного кейса (`/app/doctor/cases/[id]`)
+- Панель администратора (`/app/admin`) с верификацией кейсов и назначением врачей
+- Внутренняя страница поиска клиник (`/app/clinics`)
+- Рабочий кабинет кейса пациента (`/app/cases/[id]`)
+- Экран этапа лечения (`/app/cases/[id]/stages/[stageId]`)
+- Экран адресной поддержки этапа (`/app/cases/[id]/fundraising`)
 - Публичная карточка кейса для доноров (`/cases/[id|slug]`)
 - Социальный шеринг кейса (copy link / Telegram / VK)
 - Апдейты по статусам лечения и счетчик реакций поддержки
 - Чек-лист модерации и прозрачный статус верификации
-- API для MVP:
+- API:
+  - `POST /api/auth/register`
+  - `POST /api/auth/login`
+  - `POST /api/auth/logout`
+  - `GET /api/auth/me`
   - `GET/POST /api/cases`
   - `GET /api/cases/[id]`
   - `POST /api/cases/[id]/ai-summary`
   - `POST /api/cases/[id]/donations`
-- In-memory store с демо-кейсом (`case-demo-onco`)
+  - `POST /api/admin/cases/[id]/verify`
+  - `POST /api/admin/cases/[id]/assign-doctor`
+  - `POST /api/doctor/cases/[id]/updates`
+  - `POST /api/doctor/cases/[id]/stages/[stageId]/status`
+- SQLite база данных с автоматической инициализацией (`data/medroute.db`)
+- Сид-данные: demo patient/doctor/admin + demo кейс
 
 ## Технологии
 
 - Next.js (App Router, TypeScript)
 - React
+- SQLite (`better-sqlite3`)
 - CSS (кастомная система стилей и анимаций)
 
 ## Быстрый старт
@@ -39,21 +50,8 @@ npm run dev
 
 Открыть: `http://localhost:3000`
 
-## Демо ссылки
+## Ролевые demo-аккаунты
 
-- Лендинг: `/`
-- Создать кейс: `/app/start`
-- Демо кабинет: `/app/cases/case-demo-onco`
-- Демо экран этапа: `/app/cases/case-demo-onco/stages/surgery`
-- Демо экран сбора: `/app/cases/case-demo-onco/fundraising`
-- Публичный кейс: `/cases/aleksei-kazantsev-onco-route`
-
-## Важно про MVP
-
-Сейчас данные хранятся в памяти процесса (без БД). Для прод-версии следующий шаг:
-
-- Postgres + Prisma
-- Загрузка/хранение документов в S3-совместимом хранилище
-- Интеграция LLM (OpenAI/Yandex GPT) и OCR/PDF-парсинга
-- Платежи (CloudPayments/ЮKassa)
-- Полноценный модуль верификации документов
+- `patient@medroute.local` / `Patient123!`
+- `doctor@medroute.local` / `Doctor123!`
+- `admin@medroute.local` / `Admin123!`

@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { AiSummaryButton } from "@/components/ai-summary-button";
 import { DonationForm } from "@/components/donation-form";
+import { requireUser } from "@/lib/auth";
 import { checklistEntries, updateKindLabel } from "@/lib/case-view";
 import { getCase } from "@/lib/case-store";
 import { formatMoney, percent } from "@/lib/format";
@@ -12,11 +13,19 @@ type PageProps = {
 };
 
 export default async function CaseDashboardPage({ params }: PageProps) {
+  const user = await requireUser();
   const { id } = await params;
   const patientCase = getCase(id);
 
   if (!patientCase) {
     notFound();
+  }
+
+  if (user.role === "patient" && patientCase.patientId !== user.id) {
+    redirect("/app/patient");
+  }
+  if (user.role === "doctor") {
+    redirect("/app/doctor");
   }
 
   const progress = percent(patientCase.fundraising.raised, patientCase.fundraising.target);
@@ -26,16 +35,14 @@ export default async function CaseDashboardPage({ params }: PageProps) {
 
   return (
     <main className="app-page">
-      <div className="app-top">
-        <Link href="/" className="brand-mark">
-          MedRoute
+      <div className="app-links">
+        <Link href={user.role === "admin" ? "/app/admin" : "/app/patient"} className="button button-small button-ghost">
+          {user.role === "admin" ? "Панель администратора" : "Кабинет пациента"}
         </Link>
-        <div className="app-links">
-          <Link href={`/cases/${patientCase.slug}`} className="button button-small button-ghost">
-            Публичная карточка
-          </Link>
-          <AiSummaryButton caseId={patientCase.id} />
-        </div>
+        <Link href={`/cases/${patientCase.slug}`} className="button button-small button-ghost">
+          Публичная карточка
+        </Link>
+        <AiSummaryButton caseId={patientCase.id} />
       </div>
 
       <section className="dashboard-head">
@@ -52,7 +59,7 @@ export default async function CaseDashboardPage({ params }: PageProps) {
       </section>
 
       <section className="summary-surface">
-        <h2>AI summary</h2>
+        <h2>Первичная оценка ситуации</h2>
         <p>{patientCase.summary}</p>
       </section>
 

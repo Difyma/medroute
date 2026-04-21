@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { DonationForm } from "@/components/donation-form";
 import { ShareButtons } from "@/components/share-buttons";
+import { getCurrentUser } from "@/lib/auth";
 import { updateKindLabel } from "@/lib/case-view";
 import { getCase } from "@/lib/case-store";
 import { formatMoney, percent } from "@/lib/format";
@@ -12,6 +13,7 @@ type PageProps = {
 };
 
 export default async function PublicCasePage({ params }: PageProps) {
+  const user = await getCurrentUser();
   const { id } = await params;
   const patientCase = getCase(id);
 
@@ -26,14 +28,26 @@ export default async function PublicCasePage({ params }: PageProps) {
 
   return (
     <main className="public-page">
-      <header className="public-head">
-        <Link href="/" className="brand-mark">
-          MedRoute
-        </Link>
-        <Link href={`/app/cases/${patientCase.id}`} className="button button-small button-ghost">
-          В кабинет кейса
-        </Link>
-      </header>
+      <div className="app-links">
+        {user ? (
+          <Link
+            href={
+              user.role === "doctor"
+                ? `/app/doctor/cases/${patientCase.id}`
+                : user.role === "admin"
+                  ? `/app/cases/${patientCase.id}`
+                  : `/app/cases/${patientCase.id}`
+            }
+            className="button button-small button-ghost"
+          >
+            Открыть внутренний кабинет
+          </Link>
+        ) : (
+          <Link href="/auth/login" className="button button-small button-ghost">
+            Войти в сервис
+          </Link>
+        )}
+      </div>
 
       <section className="public-hero">
         <p className="eyebrow">Публичная карточка кейса</p>

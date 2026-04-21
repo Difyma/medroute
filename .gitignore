@@ -40,6 +40,12 @@ yarn-error.log*
 *service-account*.json
 *-firebase-adminsdk*.json
 
+# local sqlite data
+/data/
+*.db
+*.db-wal
+*.db-shm
+
 # vercel
 .vercel
 

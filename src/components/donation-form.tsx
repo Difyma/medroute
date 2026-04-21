@@ -32,12 +32,17 @@ export function DonationForm({
       });
 
       if (!response.ok) {
-        throw new Error("invalid");
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? "invalid");
       }
 
       setAmount(suggestedAmount);
       router.refresh();
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "Требуется авторизация") {
+        setError("Чтобы поддержать кейс, войдите в аккаунт.");
+        return;
+      }
       setError("Не удалось отправить платеж. Попробуйте снова.");
     } finally {
       setPending(false);

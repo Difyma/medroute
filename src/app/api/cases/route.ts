@@ -1,12 +1,34 @@
 import { NextResponse } from "next/server";
 
-import { createCase, listCases } from "@/lib/case-store";
+import { getCurrentUser } from "@/lib/auth";
+import { createCase, listAssignedCasesForDoctor, listCases, listCasesForPatient } from "@/lib/case-store";
 
 export async function GET() {
-  return NextResponse.json({ cases: listCases() });
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
+  }
+
+  if (user.role === "admin") {
+    return NextResponse.json({ cases: listCases() });
+  }
+
+  if (user.role === "doctor") {
+    return NextResponse.json({ cases: listAssignedCasesForDoctor(user.id) });
+  }
+
+  return NextResponse.json({ cases: listCasesForPatient(user.id) });
 }
 
 export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
+  }
+  if (user.role !== "patient") {
+    return NextResponse.json({ error: "Создание кейса доступно только пациенту" }, { status: 403 });
+  }
+
   const body = await request.json();
 
   if (!body.patientName || !body.city || !body.diagnosis) {
@@ -26,7 +48,7 @@ export async function POST(request: Request) {
     documentNames: Array.isArray(body.documentNames)
       ? body.documentNames.map((item: unknown) => String(item))
       : [],
-  });
+  }, user.id);
 
   return NextResponse.json({ case: created }, { status: 201 });
 }

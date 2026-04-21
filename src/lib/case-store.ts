@@ -1,6 +1,15 @@
 import { randomUUID } from "node:crypto";
 
-import { CreateCaseInput, PatientCase, TreatmentStage } from "@/lib/types";
+import { buildPrimarySummary, calculateCost, makeBaseRoadmap } from "@/lib/case-templates";
+import { getDb } from "@/lib/db";
+import {
+  ClinicDirectoryEntry,
+  CreateCaseInput,
+  PatientCase,
+  StageStatus,
+  TreatmentStage,
+  UserRole,
+} from "@/lib/types";
 
 function slugify(value: string): string {
   return value
@@ -8,331 +17,496 @@ function slugify(value: string): string {
     .trim()
     .replace(/[^\p{L}\p{N}\s-]/gu, "")
     .replace(/\s+/g, "-")
-    .slice(0, 48);
+    .slice(0, 60);
 }
 
-function makeBaseRoadmap(diagnosis: string): TreatmentStage[] {
-  return [
-    {
-      id: "diagnostics",
-      title: "Диагностика",
-      description: `КТ/МРТ, лабораторные анализы и подтверждение стадии по диагнозу ${diagnosis}.`,
-      duration: "7-10 дней",
-      criticality: "high",
-      status: "done",
-      costMin: 90_000,
-      costMax: 150_000,
-      clinics: [
-        {
-          id: "ru-nn-blokhina",
-          name: "НМИЦ онкологии им. Н.Н. Блохина",
-          country: "Россия",
-          specialization: "Комплексная диагностика",
-          estimatedCost: 120_000,
-          rating: 4.8,
-          reviews: 410,
-        },
-        {
-          id: "tr-acibadem",
-          name: "Acibadem Oncology Center",
-          country: "Турция",
-          specialization: "Уточняющая диагностика",
-          estimatedCost: 145_000,
-          rating: 4.7,
-          reviews: 198,
-        },
-      ],
-      doctors: [
-        {
-          id: "doc-1",
-          fullName: "Ирина Кузнецова",
-          role: "Клинический онколог",
-          clinicName: "НМИЦ онкологии им. Н.Н. Блохина",
-          experienceYears: 14,
-          rating: 4.9,
-          focus: "Солидные опухоли",
-        },
-      ],
-    },
-    {
-      id: "consultation",
-      title: "Консилиум и персональный план",
-      description:
-        "Консультации профильных онкологов, верификация тактики лечения и финализация roadmap.",
-      duration: "3-5 дней",
-      criticality: "high",
-      status: "in-progress",
-      costMin: 45_000,
-      costMax: 120_000,
-      clinics: [
-        {
-          id: "ru-european-clinic",
-          name: "Европейская клиника",
-          country: "Россия",
-          specialization: "Онкоконcилиумы",
-          estimatedCost: 80_000,
-          rating: 4.6,
-          reviews: 177,
-        },
-        {
-          id: "de-charite",
-          name: "Charite Comprehensive Cancer Center",
-          country: "Германия",
-          specialization: "Второе мнение",
-          estimatedCost: 115_000,
-          rating: 4.8,
-          reviews: 290,
-        },
-      ],
-      doctors: [
-        {
-          id: "doc-2",
-          fullName: "Антон Савельев",
-          role: "Онкохирург",
-          clinicName: "Европейская клиника",
-          experienceYears: 18,
-          rating: 4.8,
-          focus: "Оперативное лечение опухолей ЖКТ",
-        },
-        {
-          id: "doc-3",
-          fullName: "Miriam Falk",
-          role: "Senior Oncologist",
-          clinicName: "Charite CCC",
-          experienceYears: 16,
-          rating: 4.9,
-          focus: "Персонализированная терапия",
-        },
-      ],
-    },
-    {
-      id: "chemotherapy",
-      title: "Химиотерапия (6 курсов)",
-      description:
-        "Проведение курсов по утвержденному протоколу с контролем токсичности и промежуточной оценкой ответа.",
-      duration: "16-20 недель",
-      criticality: "high",
-      status: "planned",
-      costMin: 500_000,
-      costMax: 760_000,
-      clinics: [
-        {
-          id: "ru-lapino",
-          name: "Лапино Клиник",
-          country: "Россия",
-          specialization: "Системная терапия",
-          estimatedCost: 620_000,
-          rating: 4.7,
-          reviews: 152,
-        },
-        {
-          id: "il-sourasky",
-          name: "Sourasky Medical Center",
-          country: "Израиль",
-          specialization: "Протоколы high-intensity",
-          estimatedCost: 730_000,
-          rating: 4.8,
-          reviews: 204,
-        },
-      ],
-      doctors: [
-        {
-          id: "doc-4",
-          fullName: "Елена Шматова",
-          role: "Химиотерапевт",
-          clinicName: "Лапино Клиник",
-          experienceYears: 12,
-          rating: 4.7,
-          focus: "Химиотерапия при солидных опухолях",
-        },
-      ],
-    },
-    {
-      id: "surgery",
-      title: "Операция",
-      description:
-        "Хирургический этап по результатам консилиума. Подготовка, операция, стационар и раннее восстановление.",
-      duration: "7-14 дней",
-      criticality: "high",
-      status: "planned",
-      costMin: 340_000,
-      costMax: 560_000,
-      clinics: [
-        {
-          id: "ru-pirogov",
-          name: "НМХЦ им. Пирогова",
-          country: "Россия",
-          specialization: "Онкохирургия",
-          estimatedCost: 420_000,
-          rating: 4.7,
-          reviews: 266,
-        },
-        {
-          id: "kr-samsung",
-          name: "Samsung Medical Center",
-          country: "Южная Корея",
-          specialization: "Роботическая хирургия",
-          estimatedCost: 540_000,
-          rating: 4.8,
-          reviews: 183,
-        },
-      ],
-      doctors: [
-        {
-          id: "doc-5",
-          fullName: "Сергей Ладыгин",
-          role: "Онкохирург",
-          clinicName: "НМХЦ им. Пирогова",
-          experienceYears: 19,
-          rating: 4.9,
-          focus: "Резекционные операции",
-        },
-      ],
-    },
-    {
-      id: "rehab",
-      title: "Реабилитация и мониторинг",
-      description:
-        "Программа восстановления, контроль анализов, предотвращение осложнений и долгосрочное наблюдение.",
-      duration: "6-10 недель",
-      criticality: "medium",
-      status: "planned",
-      costMin: 140_000,
-      costMax: 280_000,
-      clinics: [
-        {
-          id: "ru-three-sisters",
-          name: "Три сестры",
-          country: "Россия",
-          specialization: "Онкореабилитация",
-          estimatedCost: 190_000,
-          rating: 4.7,
-          reviews: 140,
-        },
-      ],
-      doctors: [
-        {
-          id: "doc-6",
-          fullName: "Марина Коновалова",
-          role: "Врач реабилитолог",
-          clinicName: "Три сестры",
-          experienceYears: 11,
-          rating: 4.8,
-          focus: "Послеоперационное восстановление",
-        },
-      ],
-    },
-  ];
+function parseStringArray(value: string | null): string[] {
+  if (!value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.map((item) => String(item));
+    }
+    return [];
+  } catch {
+    return [];
+  }
 }
 
-function calculateCost(roadmap: TreatmentStage[]) {
-  const min = roadmap.reduce((sum, stage) => sum + stage.costMin, 0);
-  const max = roadmap.reduce((sum, stage) => sum + stage.costMax, 0);
-  const optimal = Math.round((min + max) / 2);
+type CaseJoinedRow = {
+  id: string;
+  slug: string;
+  patient_id: string;
+  patient_name: string;
+  age: number;
+  city: string;
+  diagnosis: string;
+  current_state: string;
+  completed_actions: string;
+  documents: string;
+  summary: string;
+  is_verified: number;
+  created_at: string;
+  current_stage_key: string | null;
+  target: number | null;
+  raised: number | null;
+  documents_are_readable: number | null;
+  diagnosis_matches_documents: number | null;
+  patient_identity_confirmed: number | null;
+  fundraising_goal_validated: number | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+};
 
-  return {
-    min,
-    optimal,
-    max,
-    byStage: roadmap.map((stage) => ({
-      stageId: stage.id,
-      title: stage.title,
-      amount: Math.round((stage.costMin + stage.costMax) / 2),
+type StageRow = {
+  stageId: string;
+  stageKey: string;
+  title: string;
+  description: string;
+  duration: string;
+  criticality: "high" | "medium" | "low";
+  status: StageStatus;
+  costMin: number;
+  costMax: number;
+};
+
+function hydrateCase(base: CaseJoinedRow): PatientCase {
+  const db = getDb();
+
+  const stages = db
+    .prepare(
+      `SELECT
+        id AS stageId,
+        stage_key AS stageKey,
+        title,
+        description,
+        duration,
+        criticality,
+        status,
+        cost_min AS costMin,
+        cost_max AS costMax
+      FROM stages
+      WHERE case_id = ?
+      ORDER BY sort_order ASC`,
+    )
+    .all(base.id) as StageRow[];
+
+  const stageClinics = db
+    .prepare(
+      `SELECT
+        s.stage_key AS stageKey,
+        sc.id,
+        sc.name,
+        sc.country,
+        sc.specialization,
+        sc.estimated_cost AS estimatedCost,
+        sc.rating,
+        sc.reviews
+      FROM stage_clinics sc
+      JOIN stages s ON s.id = sc.stage_id
+      WHERE s.case_id = ?`,
+    )
+    .all(base.id) as Array<{
+    stageKey: string;
+    id: string;
+    name: string;
+    country: string;
+    specialization: string;
+    estimatedCost: number;
+    rating: number;
+    reviews: number;
+  }>;
+
+  const stageDoctors = db
+    .prepare(
+      `SELECT
+        s.stage_key AS stageKey,
+        sd.id,
+        sd.full_name AS fullName,
+        sd.role,
+        sd.clinic_name AS clinicName,
+        sd.experience_years AS experienceYears,
+        sd.rating,
+        sd.focus
+      FROM stage_doctors sd
+      JOIN stages s ON s.id = sd.stage_id
+      WHERE s.case_id = ?`,
+    )
+    .all(base.id) as Array<{
+    stageKey: string;
+    id: string;
+    fullName: string;
+    role: string;
+    clinicName: string;
+    experienceYears: number;
+    rating: number;
+    focus: string;
+  }>;
+
+  const clinicByStage = new Map<string, typeof stageClinics>();
+  for (const clinic of stageClinics) {
+    const list = clinicByStage.get(clinic.stageKey) ?? [];
+    list.push(clinic);
+    clinicByStage.set(clinic.stageKey, list);
+  }
+
+  const doctorByStage = new Map<string, typeof stageDoctors>();
+  for (const doctor of stageDoctors) {
+    const list = doctorByStage.get(doctor.stageKey) ?? [];
+    list.push(doctor);
+    doctorByStage.set(doctor.stageKey, list);
+  }
+
+  const roadmap: TreatmentStage[] = stages.map((stage) => ({
+    id: stage.stageKey,
+    title: stage.title,
+    description: stage.description,
+    duration: stage.duration,
+    criticality: stage.criticality,
+    status: stage.status,
+    costMin: stage.costMin,
+    costMax: stage.costMax,
+    clinics: (clinicByStage.get(stage.stageKey) ?? []).map((clinic) => ({
+      id: clinic.id,
+      name: clinic.name,
+      country: clinic.country,
+      specialization: clinic.specialization,
+      estimatedCost: clinic.estimatedCost,
+      rating: clinic.rating,
+      reviews: clinic.reviews,
     })),
-  };
-}
+    doctors: (doctorByStage.get(stage.stageKey) ?? []).map((doctor) => ({
+      id: doctor.id,
+      fullName: doctor.fullName,
+      role: doctor.role,
+      clinicName: doctor.clinicName,
+      experienceYears: doctor.experienceYears,
+      rating: doctor.rating,
+      focus: doctor.focus,
+    })),
+  }));
 
-function buildAiSummary(input: Pick<PatientCase, "diagnosis" | "currentState" | "city">): string {
-  return `Пациенту требуется лечение по диагнозу «${input.diagnosis}». Текущее состояние: ${input.currentState}. Маршрут сформирован с приоритетом на быстрое подтверждение стадии, запуск терапии и безопасный переход к операции. Подобраны клиники в ${input.city} и зарубежом с диапазоном стоимости по каждому этапу.`;
-}
+  const costEstimation = calculateCost(roadmap);
 
-function createSeedCase(): PatientCase {
-  const roadmap = makeBaseRoadmap("Аденокарцинома ободочной кишки IIIB стадия");
+  const updates = db
+    .prepare(
+      `SELECT
+        id,
+        date,
+        kind,
+        title,
+        body,
+        reactions
+      FROM case_updates
+      WHERE case_id = ?
+      ORDER BY date DESC, created_at DESC`,
+    )
+    .all(base.id) as PatientCase["updates"];
 
   return {
-    id: "case-demo-onco",
-    slug: "aleksei-kazantsev-onco-route",
-    patientName: "Алексей Казанцев",
-    age: 43,
-    city: "Казань",
-    diagnosis: "Аденокарцинома ободочной кишки IIIB стадия",
-    currentState: "После биопсии, требуется консилиум и старт системной терапии",
-    completedActions: ["Биопсия", "КТ брюшной полости", "Первичный прием онколога"],
-    documents: ["Выписка_12_04_2026.pdf", "Гистология_05_04_2026.pdf"],
-    summary: buildAiSummary({
-      diagnosis: "Аденокарцинома ободочной кишки IIIB стадия",
-      currentState: "После биопсии, требуется консилиум и старт системной терапии",
-      city: "Казань",
-    }),
+    id: base.id,
+    slug: base.slug,
+    patientId: base.patient_id,
+    patientName: base.patient_name,
+    age: base.age,
+    city: base.city,
+    diagnosis: base.diagnosis,
+    currentState: base.current_state,
+    completedActions: parseStringArray(base.completed_actions),
+    documents: parseStringArray(base.documents),
+    summary: base.summary,
     roadmap,
-    costEstimation: calculateCost(roadmap),
+    costEstimation,
     fundraising: {
-      currentStageId: "surgery",
-      target: 420_000,
-      raised: 186_000,
+      currentStageId: base.current_stage_key ?? "diagnostics",
+      target: base.target ?? 0,
+      raised: base.raised ?? 0,
     },
-    isVerified: true,
+    isVerified: Boolean(base.is_verified),
     verificationChecklist: {
-      documentsAreReadable: true,
-      diagnosisMatchesDocuments: true,
-      patientIdentityConfirmed: true,
-      fundraisingGoalValidated: true,
-      reviewedBy: "Модератор Анна К.",
-      reviewedAt: "2026-04-20",
+      documentsAreReadable: Boolean(base.documents_are_readable),
+      diagnosisMatchesDocuments: Boolean(base.diagnosis_matches_documents),
+      patientIdentityConfirmed: Boolean(base.patient_identity_confirmed),
+      fundraisingGoalValidated: Boolean(base.fundraising_goal_validated),
+      reviewedBy: base.reviewed_by ?? "Не назначен",
+      reviewedAt: base.reviewed_at ?? "Ожидается",
     },
-    createdAt: "2026-04-18T09:20:00.000Z",
-    updates: [
-      {
-        id: "up-1",
-        date: "2026-04-19",
-        kind: "treatment-started",
-        title: "Получено второе мнение",
-        body: "Подтверждено, что можно начинать химиотерапию в ближайшие 5 дней.",
-        reactions: 34,
-      },
-      {
-        id: "up-2",
-        date: "2026-04-20",
-        kind: "plan-adjusted",
-        title: "Согласован план операции",
-        body: "Хирургический этап запланирован после 6 курсов, сейчас собираем средства именно на этот этап.",
-        reactions: 49,
-      },
-      {
-        id: "up-3",
-        date: "2026-04-21",
-        kind: "stage-completed",
-        title: "Завершили этап диагностики",
-        body: "Диагностический этап закрыт, переходим к консилиуму и финальному подтверждению тактики лечения.",
-        reactions: 57,
-      },
-    ],
+    createdAt: base.created_at,
+    updates,
   };
 }
 
-declare global {
-  var __medrouteCases: PatientCase[] | undefined;
+function getCaseBase(whereSql: string, values: readonly string[]): CaseJoinedRow | undefined {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT
+        c.*,
+        f.current_stage_key,
+        f.target,
+        f.raised,
+        v.documents_are_readable,
+        v.diagnosis_matches_documents,
+        v.patient_identity_confirmed,
+        v.fundraising_goal_validated,
+        v.reviewed_by,
+        v.reviewed_at
+      FROM cases c
+      LEFT JOIN fundraising f ON f.case_id = c.id
+      LEFT JOIN verification v ON v.case_id = c.id
+      WHERE ${whereSql}
+      LIMIT 1`,
+    )
+    .get(...values) as CaseJoinedRow | undefined;
 }
 
-const store = globalThis.__medrouteCases ?? [createSeedCase()];
-globalThis.__medrouteCases = store;
+function insertCaseGraph(params: {
+  id: string;
+  slug: string;
+  patientId: string;
+  patientName: string;
+  age: number;
+  city: string;
+  diagnosis: string;
+  currentState: string;
+  completedActions: string[];
+  documents: string[];
+  summary: string;
+  isVerified: boolean;
+  roadmap: TreatmentStage[];
+  fundraisingTarget: number;
+  currentStageId: string;
+}) {
+  const db = getDb();
+  const now = new Date().toISOString();
+
+  const insertCase = db.prepare(`
+    INSERT INTO cases (
+      id, slug, patient_id, patient_name, age, city, diagnosis, current_state,
+      completed_actions, documents, summary, is_verified, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertVerification = db.prepare(`
+    INSERT INTO verification (
+      case_id, documents_are_readable, diagnosis_matches_documents, patient_identity_confirmed,
+      fundraising_goal_validated, reviewed_by, reviewed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertStage = db.prepare(`
+    INSERT INTO stages (
+      id, case_id, stage_key, sort_order, title, description, duration,
+      criticality, status, cost_min, cost_max
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertStageClinic = db.prepare(`
+    INSERT INTO stage_clinics (id, stage_id, name, country, specialization, estimated_cost, rating, reviews)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertStageDoctor = db.prepare(`
+    INSERT INTO stage_doctors (id, stage_id, full_name, role, clinic_name, experience_years, rating, focus)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertFundraising = db.prepare(
+    "INSERT INTO fundraising (case_id, current_stage_key, target, raised) VALUES (?, ?, ?, ?)",
+  );
+
+  const insertUpdate = db.prepare(
+    "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  );
+
+  const tx = db.transaction(() => {
+    insertCase.run(
+      params.id,
+      params.slug,
+      params.patientId,
+      params.patientName,
+      params.age,
+      params.city,
+      params.diagnosis,
+      params.currentState,
+      JSON.stringify(params.completedActions),
+      JSON.stringify(params.documents),
+      params.summary,
+      params.isVerified ? 1 : 0,
+      now,
+      now,
+    );
+
+    insertVerification.run(
+      params.id,
+      0,
+      0,
+      0,
+      0,
+      params.isVerified ? "Модератор" : "Не назначен",
+      params.isVerified ? now.slice(0, 10) : "Ожидается",
+    );
+
+    params.roadmap.forEach((stage, index) => {
+      const stageRowId = randomUUID();
+      insertStage.run(
+        stageRowId,
+        params.id,
+        stage.id,
+        index,
+        stage.title,
+        stage.description,
+        stage.duration,
+        stage.criticality,
+        stage.status,
+        stage.costMin,
+        stage.costMax,
+      );
+
+      stage.clinics.forEach((clinic) => {
+        insertStageClinic.run(
+          randomUUID(),
+          stageRowId,
+          clinic.name,
+          clinic.country,
+          clinic.specialization,
+          clinic.estimatedCost,
+          clinic.rating,
+          clinic.reviews,
+        );
+      });
+
+      stage.doctors.forEach((doctor) => {
+        insertStageDoctor.run(
+          randomUUID(),
+          stageRowId,
+          doctor.fullName,
+          doctor.role,
+          doctor.clinicName,
+          doctor.experienceYears,
+          doctor.rating,
+          doctor.focus,
+        );
+      });
+    });
+
+    insertFundraising.run(params.id, params.currentStageId, params.fundraisingTarget, 0);
+
+    insertUpdate.run(
+      randomUUID(),
+      params.id,
+      now.slice(0, 10),
+      "general",
+      "Кейс создан",
+      "Документы загружены и отправлены на ручную верификацию.",
+      0,
+      now,
+    );
+  });
+
+  tx();
+}
 
 export function listCases(): PatientCase[] {
-  return store;
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT
+        c.*,
+        f.current_stage_key,
+        f.target,
+        f.raised,
+        v.documents_are_readable,
+        v.diagnosis_matches_documents,
+        v.patient_identity_confirmed,
+        v.fundraising_goal_validated,
+        v.reviewed_by,
+        v.reviewed_at
+      FROM cases c
+      LEFT JOIN fundraising f ON f.case_id = c.id
+      LEFT JOIN verification v ON v.case_id = c.id
+      ORDER BY c.created_at DESC`,
+    )
+    .all() as CaseJoinedRow[];
+
+  return rows.map((row) => hydrateCase(row));
+}
+
+export function listCasesForPatient(patientId: string): PatientCase[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT
+        c.*,
+        f.current_stage_key,
+        f.target,
+        f.raised,
+        v.documents_are_readable,
+        v.diagnosis_matches_documents,
+        v.patient_identity_confirmed,
+        v.fundraising_goal_validated,
+        v.reviewed_by,
+        v.reviewed_at
+      FROM cases c
+      LEFT JOIN fundraising f ON f.case_id = c.id
+      LEFT JOIN verification v ON v.case_id = c.id
+      WHERE c.patient_id = ?
+      ORDER BY c.created_at DESC`,
+    )
+    .all(patientId) as CaseJoinedRow[];
+
+  return rows.map((row) => hydrateCase(row));
+}
+
+export function listAssignedCasesForDoctor(doctorId: string): PatientCase[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT DISTINCT
+        c.*,
+        f.current_stage_key,
+        f.target,
+        f.raised,
+        v.documents_are_readable,
+        v.diagnosis_matches_documents,
+        v.patient_identity_confirmed,
+        v.fundraising_goal_validated,
+        v.reviewed_by,
+        v.reviewed_at
+      FROM cases c
+      JOIN doctor_assignments a ON a.case_id = c.id
+      LEFT JOIN fundraising f ON f.case_id = c.id
+      LEFT JOIN verification v ON v.case_id = c.id
+      WHERE a.doctor_id = ?
+      ORDER BY c.created_at DESC`,
+    )
+    .all(doctorId) as CaseJoinedRow[];
+
+  return rows.map((row) => hydrateCase(row));
 }
 
 export function getCase(idOrSlug: string): PatientCase | undefined {
-  return store.find((item) => item.id === idOrSlug || item.slug === idOrSlug);
+  const row = getCaseBase("(c.id = ? OR c.slug = ?)", [idOrSlug, idOrSlug]);
+  if (!row) {
+    return undefined;
+  }
+
+  return hydrateCase(row);
 }
 
-export function createCase(input: CreateCaseInput): PatientCase {
+export function createCase(input: CreateCaseInput, patientId: string): PatientCase {
   const id = `case-${randomUUID().slice(0, 8)}`;
   const slugBase = slugify(`${input.patientName}-${input.diagnosis}`) || `case-${id}`;
+  const slug = `${slugBase}-${Date.now().toString().slice(-4)}`;
   const roadmap = makeBaseRoadmap(input.diagnosis);
 
-  const created: PatientCase = {
+  insertCaseGraph({
     id,
-    slug: `${slugBase}-${Date.now().toString().slice(-4)}`,
+    slug,
+    patientId,
     patientName: input.patientName,
     age: input.age,
     city: input.city,
@@ -343,79 +517,306 @@ export function createCase(input: CreateCaseInput): PatientCase {
       .map((part) => part.trim())
       .filter(Boolean),
     documents: input.documentNames,
-    summary: "AI-разбор еще не запускался. Нажмите «Сформировать AI summary» в кабинете кейса.",
-    roadmap,
-    costEstimation: calculateCost(roadmap),
-    fundraising: {
-      currentStageId: "surgery",
-      target: 410_000,
-      raised: 0,
-    },
+    summary: "Первичная оценка еще не запускалась. Нажмите «Сформировать первичную оценку» в кабинете кейса.",
     isVerified: false,
-    verificationChecklist: {
-      documentsAreReadable: false,
-      diagnosisMatchesDocuments: false,
-      patientIdentityConfirmed: false,
-      fundraisingGoalValidated: false,
-      reviewedBy: "Не назначен",
-      reviewedAt: "Ожидается",
-    },
-    createdAt: new Date().toISOString(),
-    updates: [
-      {
-        id: `up-${randomUUID().slice(0, 6)}`,
-        date: new Date().toISOString().slice(0, 10),
-        kind: "general",
-        title: "Кейс создан",
-        body: "Документы загружены и отправлены на ручную верификацию.",
-        reactions: 0,
-      },
-    ],
-  };
+    roadmap,
+    fundraisingTarget: 410_000,
+    currentStageId: "surgery",
+  });
 
-  store.unshift(created);
+  const created = getCase(id);
+  if (!created) {
+    throw new Error("case-create-failed");
+  }
+
   return created;
 }
 
 export function generateAiSummary(id: string): PatientCase | undefined {
+  const db = getDb();
   const target = getCase(id);
   if (!target) {
     return undefined;
   }
 
-  target.summary = buildAiSummary(target);
-  target.updates.unshift({
-    id: `up-${randomUUID().slice(0, 6)}`,
-    date: new Date().toISOString().slice(0, 10),
-    kind: "plan-adjusted",
-    title: "AI-разбор обновлен",
-    body: "Система упростила медицинский язык и обновила последовательность этапов лечения.",
-    reactions: 0,
-  });
+  const now = new Date();
+  db.prepare("UPDATE cases SET summary = ?, updated_at = ? WHERE id = ?").run(
+    buildPrimarySummary({
+      diagnosis: target.diagnosis,
+      currentState: target.currentState,
+      city: target.city,
+    }),
+    now.toISOString(),
+    target.id,
+  );
 
-  return target;
+  db.prepare(
+    "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    randomUUID(),
+    target.id,
+    now.toISOString().slice(0, 10),
+    "plan-adjusted",
+    "Первичная оценка обновлена",
+    "Сервис упростил медицинский язык и обновил последовательность этапов лечения.",
+    0,
+    now.toISOString(),
+  );
+
+  return getCase(target.id);
 }
 
 export function donateToCase(id: string, amount: number): PatientCase | undefined {
+  const db = getDb();
   const target = getCase(id);
   if (!target) {
     return undefined;
   }
 
-  target.fundraising.raised += amount;
-  target.updates.unshift({
-    id: `up-${randomUUID().slice(0, 6)}`,
-    date: new Date().toISOString().slice(0, 10),
-    kind: "general",
-    title: "Новый перевод",
-    body: `Получено ${new Intl.NumberFormat("ru-RU").format(amount)} ₽ на этап «Операция».`,
-    reactions: 0,
-  });
+  const now = new Date();
+  db.prepare("UPDATE fundraising SET raised = raised + ? WHERE case_id = ?").run(amount, target.id);
 
-  return target;
+  db.prepare(
+    "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    randomUUID(),
+    target.id,
+    now.toISOString().slice(0, 10),
+    "general",
+    "Новый перевод",
+    `Получено ${new Intl.NumberFormat("ru-RU").format(amount)} ₽ на текущий этап.`,
+    0,
+    now.toISOString(),
+  );
+
+  return getCase(target.id);
 }
 
 export function getStageById(caseId: string, stageId: string): TreatmentStage | undefined {
   const target = getCase(caseId);
   return target?.roadmap.find((stage) => stage.id === stageId);
+}
+
+export function isDoctorAssignedToCase(doctorId: string, caseId: string): boolean {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT id FROM doctor_assignments WHERE doctor_id = ? AND case_id = ? LIMIT 1")
+    .get(doctorId, caseId) as { id: string } | undefined;
+  return Boolean(row);
+}
+
+export function listCaseAssignments(caseId: string): Array<{
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  doctorEmail: string;
+  stageKey: string | null;
+  note: string;
+}> {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT
+        a.id,
+        a.doctor_id AS doctorId,
+        u.full_name AS doctorName,
+        u.email AS doctorEmail,
+        a.stage_key AS stageKey,
+        a.note
+      FROM doctor_assignments a
+      JOIN users u ON u.id = a.doctor_id
+      WHERE a.case_id = ?
+      ORDER BY a.created_at DESC`,
+    )
+    .all(caseId) as Array<{
+    id: string;
+    doctorId: string;
+    doctorName: string;
+    doctorEmail: string;
+    stageKey: string | null;
+    note: string;
+  }>;
+}
+
+export function listDoctors(): Array<{ id: string; fullName: string; email: string; city: string }> {
+  const db = getDb();
+  return db
+    .prepare("SELECT id, full_name AS fullName, email, city FROM users WHERE role = 'doctor' ORDER BY full_name ASC")
+    .all() as Array<{ id: string; fullName: string; email: string; city: string }>;
+}
+
+export function listUsersByRole(role: UserRole): Array<{ id: string; fullName: string; email: string; city: string }> {
+  const db = getDb();
+  return db
+    .prepare("SELECT id, full_name AS fullName, email, city FROM users WHERE role = ? ORDER BY created_at DESC")
+    .all(role) as Array<{ id: string; fullName: string; email: string; city: string }>;
+}
+
+export function setCaseVerification(params: {
+  caseId: string;
+  isVerified: boolean;
+  reviewedBy: string;
+  checklist: {
+    documentsAreReadable: boolean;
+    diagnosisMatchesDocuments: boolean;
+    patientIdentityConfirmed: boolean;
+    fundraisingGoalValidated: boolean;
+  };
+}) {
+  const db = getDb();
+  const reviewedAt = new Date().toISOString().slice(0, 10);
+
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE cases SET is_verified = ?, updated_at = ? WHERE id = ?").run(
+      params.isVerified ? 1 : 0,
+      new Date().toISOString(),
+      params.caseId,
+    );
+
+    db.prepare(
+      `UPDATE verification SET
+        documents_are_readable = ?,
+        diagnosis_matches_documents = ?,
+        patient_identity_confirmed = ?,
+        fundraising_goal_validated = ?,
+        reviewed_by = ?,
+        reviewed_at = ?
+      WHERE case_id = ?`,
+    ).run(
+      params.checklist.documentsAreReadable ? 1 : 0,
+      params.checklist.diagnosisMatchesDocuments ? 1 : 0,
+      params.checklist.patientIdentityConfirmed ? 1 : 0,
+      params.checklist.fundraisingGoalValidated ? 1 : 0,
+      params.reviewedBy,
+      reviewedAt,
+      params.caseId,
+    );
+
+    db.prepare(
+      "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    ).run(
+      randomUUID(),
+      params.caseId,
+      reviewedAt,
+      "general",
+      params.isVerified ? "Кейс верифицирован" : "Статус верификации изменен",
+      params.isVerified
+        ? "Документы проверены модератором. Кейс отмечен как проверенный."
+        : "Кейс переведен в режим дополнительной проверки.",
+      0,
+      new Date().toISOString(),
+    );
+  });
+
+  tx();
+}
+
+export function assignDoctorToCase(params: {
+  doctorId: string;
+  caseId: string;
+  stageKey?: string;
+  note?: string;
+}) {
+  const db = getDb();
+  db.prepare(
+    `INSERT OR IGNORE INTO doctor_assignments (id, doctor_id, case_id, stage_key, note, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run(
+    randomUUID(),
+    params.doctorId,
+    params.caseId,
+    params.stageKey ?? null,
+    params.note ?? "",
+    new Date().toISOString(),
+  );
+}
+
+export function updateCaseStageStatus(params: {
+  caseId: string;
+  stageKey: string;
+  status: StageStatus;
+  actorName: string;
+}) {
+  const db = getDb();
+  const now = new Date();
+
+  db.prepare("UPDATE stages SET status = ? WHERE case_id = ? AND stage_key = ?").run(
+    params.status,
+    params.caseId,
+    params.stageKey,
+  );
+
+  db.prepare(
+    "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    randomUUID(),
+    params.caseId,
+    now.toISOString().slice(0, 10),
+    params.status === "done" ? "stage-completed" : "plan-adjusted",
+    "Статус этапа обновлен",
+    `${params.actorName} обновил статус этапа ${params.stageKey} на «${params.status}».`,
+    0,
+    now.toISOString(),
+  );
+
+  db.prepare("UPDATE cases SET updated_at = ? WHERE id = ?").run(now.toISOString(), params.caseId);
+}
+
+export function addCaseUpdate(params: {
+  caseId: string;
+  kind: "stage-completed" | "treatment-started" | "plan-adjusted" | "general";
+  title: string;
+  body: string;
+}) {
+  const db = getDb();
+  const now = new Date();
+
+  db.prepare(
+    "INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    randomUUID(),
+    params.caseId,
+    now.toISOString().slice(0, 10),
+    params.kind,
+    params.title,
+    params.body,
+    0,
+    now.toISOString(),
+  );
+
+  db.prepare("UPDATE cases SET updated_at = ? WHERE id = ?").run(now.toISOString(), params.caseId);
+}
+
+export function listClinicDirectory(filters?: {
+  query?: string;
+  stage?: string;
+}): ClinicDirectoryEntry[] {
+  const db = getDb();
+  const query = (filters?.query ?? "").trim().toLowerCase();
+  const stage = (filters?.stage ?? "Все этапы").trim();
+
+  const all = db
+    .prepare(
+      `SELECT
+        id,
+        name,
+        city,
+        country,
+        stage,
+        specialization,
+        rating,
+        reviews AS reviewCount,
+        price_from AS priceFrom,
+        description
+      FROM clinics
+      ORDER BY rating DESC, reviews DESC`,
+    )
+    .all() as ClinicDirectoryEntry[];
+
+  return all.filter((clinic) => {
+    const matchesStage = stage === "Все этапы" || clinic.stage === stage;
+    const haystack = `${clinic.name} ${clinic.city} ${clinic.specialization} ${clinic.country}`.toLowerCase();
+    const matchesQuery = !query || haystack.includes(query);
+    return matchesStage && matchesQuery;
+  });
 }

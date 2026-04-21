@@ -1,5 +1,15 @@
 export type StageCriticality = "high" | "medium" | "low";
 export type StageStatus = "planned" | "in-progress" | "done";
+export type UserRole = "patient" | "doctor" | "admin";
+
+export interface AppUser {
+  id: string;
+  fullName: string;
+  email: string;
+  role: UserRole;
+  city: string;
+  createdAt: string;
+}
 
 export interface ClinicOption {
   id: string;
@@ -72,6 +82,7 @@ export interface VerificationChecklist {
 export interface PatientCase {
   id: string;
   slug: string;
+  patientId: string;
   patientName: string;
   age: number;
   city: string;
@@ -97,4 +108,17 @@ export interface CreateCaseInput {
   currentState: string;
   completedActions: string;
   documentNames: string[];
+}
+
+export interface ClinicDirectoryEntry {
+  id: string;
+  name: string;
+  city: string;
+  country: string;
+  stage: string;
+  specialization: string;
+  rating: number;
+  reviewCount: number;
+  priceFrom: number;
+  description: string;
 }

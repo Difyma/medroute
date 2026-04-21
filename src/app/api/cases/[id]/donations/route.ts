@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getCurrentUser } from "@/lib/auth";
 import { donateToCase } from "@/lib/case-store";
 
 type RouteContext = {
@@ -7,6 +8,11 @@ type RouteContext = {
 };
 
 export async function POST(request: Request, context: RouteContext) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Требуется авторизация" }, { status: 401 });
+  }
+
   const { id } = await context.params;
   const body = await request.json();
   const amount = Number(body.amount);

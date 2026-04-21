@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
+import { requireUser } from "@/lib/auth";
 import { getCase, getStageById } from "@/lib/case-store";
 import { formatMoney } from "@/lib/format";
 
@@ -9,6 +10,7 @@ type StagePageProps = {
 };
 
 export default async function StagePage({ params }: StagePageProps) {
+  const user = await requireUser();
   const { id, stageId } = await params;
   const patientCase = getCase(id);
   const stage = getStageById(id, stageId);
@@ -17,12 +19,16 @@ export default async function StagePage({ params }: StagePageProps) {
     notFound();
   }
 
+  if (user.role === "patient" && patientCase.patientId !== user.id) {
+    redirect("/app/patient");
+  }
+  if (user.role === "doctor") {
+    redirect("/app/doctor");
+  }
+
   return (
     <main className="app-page">
-      <div className="app-top">
-        <Link href={`/app/cases/${patientCase.id}`} className="brand-mark">
-          MedRoute
-        </Link>
+      <div className="app-links">
         <Link href={`/app/cases/${patientCase.id}`} className="button button-small button-ghost">
           Назад к кейсу
         </Link>

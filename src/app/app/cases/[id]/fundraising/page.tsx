@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { DonationForm } from "@/components/donation-form";
+import { requireUser } from "@/lib/auth";
 import { getCase } from "@/lib/case-store";
 import { formatMoney, percent } from "@/lib/format";
 
@@ -10,11 +11,19 @@ type FundraisingPageProps = {
 };
 
 export default async function FundraisingPage({ params }: FundraisingPageProps) {
+  const user = await requireUser();
   const { id } = await params;
   const patientCase = getCase(id);
 
   if (!patientCase) {
     notFound();
+  }
+
+  if (user.role === "patient" && patientCase.patientId !== user.id) {
+    redirect("/app/patient");
+  }
+  if (user.role === "doctor") {
+    redirect("/app/doctor");
   }
 
   const currentStage = patientCase.roadmap.find(
@@ -24,10 +33,7 @@ export default async function FundraisingPage({ params }: FundraisingPageProps) 
 
   return (
     <main className="app-page">
-      <div className="app-top">
-        <Link href={`/app/cases/${patientCase.id}`} className="brand-mark">
-          MedRoute
-        </Link>
+      <div className="app-links">
         <Link href={`/app/cases/${patientCase.id}`} className="button button-small button-ghost">
           Назад к кейсу
         </Link>

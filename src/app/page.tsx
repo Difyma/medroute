@@ -5,47 +5,55 @@ const journey = [
   {
     step: "01",
     title: "Создание кейса",
-    text: "Загружаете выписки и анализы. Система собирает основу кейса и отправляет документы на верификацию.",
+    text: "Загрузите документы и базовые данные пациента.",
+    hint: "3-5 минут",
   },
   {
     step: "02",
-    title: "AI-разбор",
-    text: "Медицинский язык переводится в понятный формат: диагноз, риски, этапы и приоритеты лечения.",
+    title: "Первичная оценка",
+    text: "Получите понятное описание диагноза и рисков.",
+    hint: "Автоструктура",
   },
   {
     step: "03",
     title: "Roadmap лечения",
-    text: "Вы получаете маршрут: диагностика, консультации, терапия, операция и реабилитация с критичностью и сроками.",
+    text: "Видите этапы, сроки и приоритеты лечения.",
+    hint: "Единый план",
   },
   {
     step: "04",
     title: "Поддержка реализации",
-    text: "Команда помогает согласовать следующий шаг лечения и сопровождать пациента до его выполнения.",
+    text: "Сопровождаем до завершения текущего этапа.",
+    hint: "С координатором",
   },
 ];
 
 const aidDirections = [
   {
     title: "Медицинская помощь",
-    text: "Формируем маршрут лечения, подбираем клиники и проверенных врачей по конкретному диагнозу.",
+    text: "Подбираем маршрут, клиники и специалистов по диагнозу.",
+    hint: "Профильная экспертиза",
   },
   {
     title: "Организационная помощь",
-    text: "Помогаем собрать документы, подготовиться к консультациям и не терять время между этапами.",
+    text: "Помогаем с документами и подготовкой к консультациям.",
+    hint: "Без лишних пауз",
   },
   {
     title: "Информационная помощь",
-    text: "Переводим сложный медицинский язык в понятные шаги для пациента и его семьи.",
+    text: "Переводим сложные медицинские данные в понятные шаги.",
+    hint: "Понятно семье",
   },
   {
     title: "Финансовая помощь",
-    text: "При необходимости подключаем финансовую поддержку как часть общего плана помощи пациенту.",
+    text: "При необходимости подключаем сбор под конкретный этап.",
+    hint: "Точечная поддержка",
   },
 ];
 
 const productFeatures = [
   "Кейс пациента с документами и ручной верификацией",
-  "AI summary и автоструктура диагноза",
+  "Первичная оценка документов и автоструктура диагноза",
   "Roadmap лечения с этапами, сроками и критичностью",
   "Подбор клиник и врачей под конкретный диагноз",
   "Оценка стоимости по этапам (min / optimal / max)",
@@ -55,19 +63,23 @@ const productFeatures = [
 const mechanicsLayers = [
   {
     title: "Карточка кейса",
-    text: "Пациент публикует историю, диагноз и цель лечения, а семья получает понятную картину прогресса.",
+    text: "Вся информация о пациенте и лечении в одном месте.",
+    hint: "Прозрачный статус",
   },
   {
     title: "Лечение по этапам",
-    text: "Система формирует рабочий roadmap: текущий этап, сроки, приоритет и понятная логика следующего шага.",
+    text: "Каждый этап лечения понятен и имеет следующий шаг.",
+    hint: "Маршрут действий",
   },
   {
     title: "Проверенные специалисты",
-    text: "В кейсы подключаются врачи и клиники с предварительной верификацией профиля, опыта и специализации.",
+    text: "Подключаем только верифицированных специалистов и клиники.",
+    hint: "Ручная проверка",
   },
   {
     title: "Поддержка реализации",
-    text: "После согласования этапа сервис помогает пройти его без пауз и потери времени.",
+    text: "Координатор ведет кейс до результата этапа.",
+    hint: "До результата",
   },
 ];
 
@@ -90,7 +102,7 @@ const productAdvantages = [
   "Подбор клиник по этапам",
   "Подбор врачей по диагнозу",
   "Прозрачный расчет стоимости лечения",
-  "AI-разбор медицинских документов",
+  "Первичная оценка медицинских документов",
 ];
 
 const supportShowcases = [
@@ -182,24 +194,6 @@ export default function Home() {
     <main className="landing-root">
       <section className="hero-screen">
         <div className="hero-noise" aria-hidden="true" />
-        <header className="topbar">
-          <Link href="/" className="brand-mark">
-            MedRoute
-          </Link>
-          <nav className="topnav">
-            <a href="#flow">Сценарий</a>
-            <a href="#directions">Направления помощи</a>
-            <a href="#mechanics">Как это работает</a>
-            <a href="#product">Продукт</a>
-            <a href="#support">Поддержка</a>
-            <Link href="/clinics">Клиники</Link>
-            <a href="#specialists">Специалисты</a>
-            <a href="#trust">Доверие</a>
-          </nav>
-          <Link href="/app/start" className="button button-small">
-            Создать кейс
-          </Link>
-        </header>
 
         <div className="hero-grid">
           <div className="hero-copy reveal-up">
@@ -210,8 +204,8 @@ export default function Home() {
               в нескольких направлениях.
             </h1>
             <p>
-              MedRoute объединяет медицинскую, организационную и информационную помощь: от AI-разбора
-              документов и подбора врачей до координации каждого следующего шага лечения.
+              MedRoute объединяет медицинскую, организационную и информационную помощь: от первичной
+              оценки документов и подбора врачей до координации каждого следующего шага лечения.
             </p>
             <div className="hero-actions">
               <Link href="/app/start" className="button">
@@ -240,7 +234,7 @@ export default function Home() {
           <div className="hero-visual reveal-up-delay">
             <div className="floating-card">
               <Image
-                src="/style/reference-2.jpg"
+                src="/style/hero-first-block.jpg"
                 alt="Visual style reference"
                 width={960}
                 height={640}
@@ -259,15 +253,22 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="flow" className="surface-section">
-        <div className="section-head">
+      <section id="flow" className="surface-section light-section light-section-flow">
+        <div className="section-head section-head-compact">
           <p className="eyebrow">Путь пользователя</p>
           <h2>Диагноз → План лечения → Стоимость → Сбор</h2>
+          <div className="section-pills">
+            <span>4 шага</span>
+            <span>Быстрый старт</span>
+          </div>
         </div>
-        <div className="journey-grid">
+        <div className="journey-grid journey-grid-compact">
           {journey.map((item) => (
-            <article key={item.step} className="journey-item">
-              <span>{item.step}</span>
+            <article key={item.step} className="journey-item journey-item-compact">
+              <div className="journey-item-top">
+                <span className="journey-step">{item.step}</span>
+                <span className="journey-chip">{item.hint}</span>
+              </div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
             </article>
@@ -275,15 +276,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="directions" className="surface-section">
-        <div className="section-head">
+      <section id="directions" className="surface-section light-section light-section-directions">
+        <div className="section-head section-head-compact">
           <p className="eyebrow">Направления помощи</p>
-          <h2>Сбор средств это важная часть, но не единственная ценность MedRoute</h2>
+          <h2>Помощь в нескольких направлениях, не только в финансировании</h2>
+          <div className="section-pills">
+            <span>Медицинская</span>
+            <span>Организационная</span>
+            <span>Информационная</span>
+          </div>
         </div>
-        <div className="journey-grid">
+        <div className="journey-grid journey-grid-compact">
           {aidDirections.map((item, index) => (
-            <article key={item.title} className="journey-item">
-              <span>0{index + 1}</span>
+            <article key={item.title} className="journey-item journey-item-compact">
+              <div className="journey-item-top">
+                <span className="journey-step">0{index + 1}</span>
+                <span className="journey-chip">{item.hint}</span>
+              </div>
               <h3>{item.title}</h3>
               <p>{item.text}</p>
             </article>
@@ -291,15 +300,23 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="mechanics" className="surface-section">
-        <div className="section-head">
+      <section id="mechanics" className="surface-section light-section light-section-mechanics">
+        <div className="section-head section-head-compact">
           <p className="eyebrow">Как работает MedRoute</p>
-          <h2>Мы ведем пациента и семью от диагноза до следующего шага лечения</h2>
+          <h2>Сервис ведет пациента и семью по маршруту лечения</h2>
+          <div className="section-pills">
+            <span>Кейс</span>
+            <span>Этапы</span>
+            <span>Специалисты</span>
+          </div>
         </div>
-        <div className="journey-grid">
+        <div className="journey-grid journey-grid-compact">
           {mechanicsLayers.map((layer, index) => (
-            <article key={layer.title} className="journey-item">
-              <span>0{index + 1}</span>
+            <article key={layer.title} className="journey-item journey-item-compact">
+              <div className="journey-item-top">
+                <span className="journey-step">0{index + 1}</span>
+                <span className="journey-chip">{layer.hint}</span>
+              </div>
               <h3>{layer.title}</h3>
               <p>{layer.text}</p>
             </article>
@@ -428,6 +445,15 @@ export default function Home() {
           <span>История обновлений</span>
           <span>Разбивка стоимости по этапам</span>
         </div>
+      </section>
+
+      <section className="surface-section ai-note-block">
+        <p className="eyebrow">Первичная оценка</p>
+        <h2>Можно запросить первичную оценку от ИИ простым языком</h2>
+        <p>
+          Сервис помогает быстро понять текущую ситуацию по документам: что важно сейчас и к каким
+          специалистам обратиться в первую очередь.
+        </p>
       </section>
 
       <section className="final-cta">
