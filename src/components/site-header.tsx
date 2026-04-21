@@ -20,8 +20,8 @@ export async function SiteHeader() {
             <img
               src="/style/logomedroute-Photoroom.png"
               alt=""
-              width={180}
-              height={120}
+              width={60}
+              height={60}
               className="brand-mark-logo"
               decoding="async"
               fetchPriority="high"

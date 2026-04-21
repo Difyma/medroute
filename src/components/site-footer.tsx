@@ -16,13 +16,13 @@ export async function SiteFooter() {
               <img
                 src="/style/logomedroute-Photoroom.png"
                 alt=""
-                width={180}
-                height={120}
+                width={60}
+                height={60}
                 className="site-footer-brand-logo"
                 decoding="async"
               />
             </span>
-            <p className="eyebrow site-footer-brand-title">MedRoute</p>
+            <span className="eyebrow site-footer-brand-title">MedRoute</span>
           </div>
           <p className="site-footer-copy">
             Сервис навигации по лечению с поддержкой пациента и семьи на каждом этапе.

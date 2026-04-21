@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { LandingProductDemo } from "@/components/landing-product-demo";
+
 const journey = [
   {
     step: "01",
@@ -325,8 +327,8 @@ export default function Home() {
       </section>
 
       <section id="product" className="surface-section product-view">
-        <div className="product-media">
-          <Image src="/style/reference-1.jpg" alt="Medical style board" width={905} height={1268} />
+        <div className="product-media product-media--demo">
+          <LandingProductDemo />
         </div>
         <div className="product-copy">
           <p className="eyebrow">Платформа в работе</p>
@@ -449,7 +451,7 @@ export default function Home() {
 
       <section className="surface-section ai-note-block">
         <p className="eyebrow">Первичная оценка</p>
-        <h2>Можно запросить первичную оценку от ИИ простым языком</h2>
+        <h2>Можно запросить первичную оценку простым языком</h2>
         <p>
           Сервис помогает быстро понять текущую ситуацию по документам: что важно сейчас и к каким
           специалистам обратиться в первую очередь.
