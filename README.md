@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MedRoute MVP
 
-## Getting Started
+MVP веб-сервиса онко-навигации и адресного сбора средств.
 
-First, run the development server:
+Ключевая идея: не просто сбор денег, а понятный маршрут лечения:
+
+`Диагноз -> AI-разбор -> Roadmap этапов -> Стоимость -> Сбор на конкретный этап`.
+
+## Что реализовано
+
+- Продающий лендинг в медицинском high-tech стиле (`/`)
+- Создание кейса пациента (`/app/start`)
+- Рабочий кабинет кейса с roadmap, клиниками, врачами и стоимостью (`/app/cases/[id]`)
+- Отдельный экран этапа лечения (`/app/cases/[id]/stages/[stageId]`)
+- Отдельный экран сбора на текущий этап (`/app/cases/[id]/fundraising`)
+- Публичная карточка кейса для доноров (`/cases/[id|slug]`)
+- Социальный шеринг кейса (copy link / Telegram / VK)
+- Апдейты по статусам лечения и счетчик реакций поддержки
+- Чек-лист модерации и прозрачный статус верификации
+- API для MVP:
+  - `GET/POST /api/cases`
+  - `GET /api/cases/[id]`
+  - `POST /api/cases/[id]/ai-summary`
+  - `POST /api/cases/[id]/donations`
+- In-memory store с демо-кейсом (`case-demo-onco`)
+
+## Технологии
+
+- Next.js (App Router, TypeScript)
+- React
+- CSS (кастомная система стилей и анимаций)
+
+## Быстрый старт
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Открыть: `http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Демо ссылки
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Лендинг: `/`
+- Создать кейс: `/app/start`
+- Демо кабинет: `/app/cases/case-demo-onco`
+- Демо экран этапа: `/app/cases/case-demo-onco/stages/surgery`
+- Демо экран сбора: `/app/cases/case-demo-onco/fundraising`
+- Публичный кейс: `/cases/aleksei-kazantsev-onco-route`
 
-## Learn More
+## Важно про MVP
 
-To learn more about Next.js, take a look at the following resources:
+Сейчас данные хранятся в памяти процесса (без БД). Для прод-версии следующий шаг:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Postgres + Prisma
+- Загрузка/хранение документов в S3-совместимом хранилище
+- Интеграция LLM (OpenAI/Yandex GPT) и OCR/PDF-парсинга
+- Платежи (CloudPayments/ЮKassa)
+- Полноценный модуль верификации документов
