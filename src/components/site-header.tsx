@@ -30,9 +30,10 @@ export async function SiteHeader() {
           <span className="brand-mark-text">MedRoute</span>
         </Link>
         <nav className="site-nav">
-          <Link href="/#flow">Сценарий</Link>
-          <Link href="/#directions">Направления помощи</Link>
-          <Link href="/#support">Поддержка</Link>
+          <Link href="/consultation">Консультации</Link>
+          <Link href="/online">Онлайн</Link>
+          <Link href="/treatment">Лечение</Link>
+          <Link href="/help">К кому идти</Link>
           <Link href="/clinics">Клиники</Link>
           {user ? (
             <>

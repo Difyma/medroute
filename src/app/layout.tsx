@@ -17,9 +17,12 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "MedRoute - Маршрут лечения и сбор по этапам",
+  title: {
+    default: "MedRoute",
+    template: "%s · MedRoute",
+  },
   description:
-    "Платформа онко-навигации: первичная оценка документов, roadmap лечения, подбор клиник и проверенных врачей, сбор средств на конкретный этап.",
+    "Консультация врача онлайн и сопровождение: подбор специалистов, помощь разобраться в диагнозе и документах, план лечения, клиники и оценка стоимости по этапам.",
   icons: {
     icon: "/style/logomedroute-Photoroom.png",
     apple: "/style/logomedroute-Photoroom.png",

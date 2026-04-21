@@ -27,10 +27,18 @@ export async function SiteFooter() {
           <p className="site-footer-copy">
             Сервис навигации по лечению с поддержкой пациента и семьи на каждом этапе.
           </p>
+          <p className="site-footer-doctors">
+            Обращение для врачей:{" "}
+            <a href="mailto:medrout@yandex.com">medrout@yandex.com</a>
+          </p>
         </div>
         <div className="site-footer-links">
           <Link href="/">Главная</Link>
-          <Link href="/clinics">Поиск клиник</Link>
+          <Link href="/consultation">Консультации</Link>
+          <Link href="/online">Онлайн</Link>
+          <Link href="/treatment">Помощь в лечении</Link>
+          <Link href="/help">К какому врачу</Link>
+          <Link href="/clinics">Клиники</Link>
           {user ? <Link href={profileHref}>Мой кабинет</Link> : <Link href="/auth/login">Войти</Link>}
         </div>
       </div>

@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
 import { LandingProductDemo } from "@/components/landing-product-demo";
+
+export const metadata: Metadata = {
+  title: {
+    absolute: "Консультация врача онлайн — подбор специалистов и помощь в лечении",
+  },
+  description:
+    "Получить консультацию врача онлайн или с подбором специалиста: разберёмся, к кому идти, подготовим план и поможем пройти лечение по этапам.",
+};
 
 const journey = [
   {
@@ -199,19 +208,22 @@ export default function Home() {
 
         <div className="hero-grid">
           <div className="hero-copy reveal-up">
-            <p className="eyebrow">Комплексная помощь по всему маршруту лечения</p>
+            <p className="eyebrow">Консультация врача и помощь разобраться</p>
             <h1>
-              Помогаем пройти лечение
+              Подбор специалистов и сопровождение
               <br />
-              в нескольких направлениях.
+              по всему маршруту лечения.
             </h1>
             <p>
-              MedRoute объединяет медицинскую, организационную и информационную помощь: от первичной
-              оценки документов и подбора врачей до координации каждого следующего шага лечения.
+              Сначала — врач и консультация: онлайн или очно. Потом — понятный план, подбор клиник и
+              координация этапов, чтобы семья не терялась в документах и очередях.
             </p>
             <div className="hero-actions">
-              <Link href="/app/start" className="button">
-                Запустить кейс
+              <Link href="/consultation" className="button">
+                Получить консультацию
+              </Link>
+              <Link href="/app/start" className="button button-secondary">
+                Отправить кейс
               </Link>
               <Link href="/cases/aleksei-kazantsev-onco-route" className="button button-ghost">
                 Смотреть публичный кейс
