@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   const fullName = String(body.fullName ?? "").trim();
   const email = String(body.email ?? "").trim().toLowerCase();
   const city = String(body.city ?? "").trim();
+  const specialty = String(body.specialty ?? "").trim();
   const password = String(body.password ?? "");
   const role = body.role === "doctor" ? "doctor" : "patient";
 
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const user = await registerUser({ fullName, email, city, password, role });
+    const user = await registerUser({ fullName, email, city, specialty, password, role });
     return NextResponse.json({ user }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "email-already-exists") {

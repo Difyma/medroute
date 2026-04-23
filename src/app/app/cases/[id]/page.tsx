@@ -5,7 +5,7 @@ import { AiSummaryButton } from "@/components/ai-summary-button";
 import { DonationForm } from "@/components/donation-form";
 import { requireUser } from "@/lib/auth";
 import { checklistEntries, updateKindLabel } from "@/lib/case-view";
-import { getCase } from "@/lib/case-store";
+import { getCase, listCaseDoctorChats } from "@/lib/case-store";
 import { formatMoney, percent } from "@/lib/format";
 
 type PageProps = {
@@ -32,6 +32,7 @@ export default async function CaseDashboardPage({ params }: PageProps) {
   const currentStage = patientCase.roadmap.find(
     (stage) => stage.id === patientCase.fundraising.currentStageId,
   );
+  const doctorChats = listCaseDoctorChats(patientCase.id);
 
   return (
     <main className="app-page">
@@ -189,6 +190,81 @@ export default async function CaseDashboardPage({ params }: PageProps) {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="summary-surface">
+        <h2>Ответы специалистов</h2>
+        {doctorChats.length === 0 ? (
+          <p>Пока нет активных диалогов с врачами. Врач увидит кейс и сможет принять его в работу.</p>
+        ) : (
+          <div className="doctor-chat-grid">
+            {doctorChats.map((chat) => (
+              <article key={chat.id} className="doctor-chat-card">
+                <header className="doctor-chat-head">
+                  <div>
+                    <h3>{chat.doctorName}</h3>
+                    <p>{chat.doctorEmail}</p>
+                  </div>
+                </header>
+
+                <div className="chat-thread">
+                  {chat.messages.length === 0 ? (
+                    <p>Диалог пока пуст.</p>
+                  ) : (
+                    chat.messages.map((message) => (
+                      <article
+                        key={message.id}
+                        className={`chat-bubble ${
+                          message.senderRole === "doctor" ? "chat-bubble-doctor" : "chat-bubble-patient"
+                        } ${
+                          message.messageKind === "recommendation"
+                            ? "chat-bubble-recommendation"
+                            : message.messageKind === "alternative-plan"
+                              ? "chat-bubble-alternative"
+                              : ""
+                        }`}
+                      >
+                        <header>
+                          <span className="chat-header-main">
+                            <strong>{message.senderName}</strong>
+                            {message.senderRole === "doctor" && message.messageKind !== "comment" ? (
+                              <span
+                                className={`message-kind-badge ${
+                                  message.messageKind === "recommendation"
+                                    ? "message-kind-badge-recommendation"
+                                    : "message-kind-badge-alternative"
+                                }`}
+                              >
+                                {message.messageKind === "recommendation"
+                                  ? "Рекомендация"
+                                  : "Альтернативное лечение"}
+                              </span>
+                            ) : null}
+                          </span>
+                          <small>{new Date(message.createdAt).toLocaleString("ru-RU")}</small>
+                        </header>
+                        <p>{message.body}</p>
+                      </article>
+                    ))
+                  )}
+                </div>
+
+                {user.role === "patient" ? (
+                  <form className="inline-form" action={`/api/chats/${chat.id}/messages`} method="post">
+                    <input type="hidden" name="redirectTo" value={`/app/cases/${patientCase.id}`} />
+                    <label>
+                      Сообщение врачу
+                      <textarea name="body" rows={3} required placeholder="Уточните вопрос по этапу лечения." />
+                    </label>
+                    <button type="submit" className="button button-small">
+                      Отправить
+                    </button>
+                  </form>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     </main>
   );

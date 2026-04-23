@@ -14,10 +14,10 @@ export async function SiteFooter() {
           <div className="site-footer-brand-row">
             <span className="site-footer-brand-graphic">
               <img
-                src="/style/logomedroute-Photoroom.png"
-                alt=""
-                width={60}
-                height={60}
+                src="/brand/logomedroute-icon-512.png"
+                alt="Логотип MedRoute"
+                width={36}
+                height={36}
                 className="site-footer-brand-logo"
                 decoding="async"
               />

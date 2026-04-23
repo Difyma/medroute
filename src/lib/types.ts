@@ -8,6 +8,7 @@ export interface AppUser {
   email: string;
   role: UserRole;
   city: string;
+  specialty: string;
   createdAt: string;
 }
 
@@ -84,6 +85,7 @@ export interface PatientCase {
   slug: string;
   patientId: string;
   patientName: string;
+  direction: string;
   age: number;
   city: string;
   diagnosis: string;
@@ -121,4 +123,23 @@ export interface ClinicDirectoryEntry {
   reviewCount: number;
   priceFrom: number;
   description: string;
+}
+
+export interface DoctorCaseChatMessage {
+  id: string;
+  senderRole: "doctor" | "patient";
+  messageKind: "comment" | "recommendation" | "alternative-plan";
+  senderName: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface DoctorCaseChatThread {
+  id: string;
+  caseId: string;
+  doctorId: string;
+  doctorName: string;
+  doctorEmail: string;
+  createdAt: string;
+  messages: DoctorCaseChatMessage[];
 }

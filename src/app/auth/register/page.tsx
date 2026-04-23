@@ -9,6 +9,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [city, setCity] = useState("");
+  const [specialty, setSpecialty] = useState("Онкология");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [error, setError] = useState<string | null>(null);
@@ -31,7 +32,7 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ fullName, email, city, password, role }),
+        body: JSON.stringify({ fullName, email, city, specialty, password, role }),
       });
 
       const payload = (await response.json().catch(() => ({}))) as {
@@ -97,6 +98,19 @@ export default function RegisterPage() {
               required
             />
           </label>
+
+          {role === "doctor" ? (
+            <label>
+              Направление врача
+              <input
+                type="text"
+                value={specialty}
+                onChange={(event) => setSpecialty(event.target.value)}
+                placeholder="Онкология"
+                required
+              />
+            </label>
+          ) : null}
 
           <label>
             Пароль

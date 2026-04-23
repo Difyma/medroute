@@ -117,6 +117,7 @@ export async function registerUser(input: {
   email: string;
   role: Extract<UserRole, "patient" | "doctor">;
   city: string;
+  specialty?: string;
   password: string;
 }): Promise<AppUser> {
   const existing = getUserByEmail(input.email);

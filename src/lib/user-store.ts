@@ -10,6 +10,7 @@ type UserRow = {
   email: string;
   role: UserRole;
   city: string;
+  specialty: string;
   password_hash: string;
   created_at: string;
 };
@@ -21,6 +22,7 @@ function mapUser(row: UserRow): AppUser {
     email: row.email,
     role: row.role,
     city: row.city,
+    specialty: row.specialty,
     createdAt: row.created_at,
   };
 }
@@ -29,7 +31,7 @@ export function getUserById(id: string): AppUser | undefined {
   const db = getDb();
   const row = db
     .prepare(
-      "SELECT id, full_name, email, role, city, password_hash, created_at FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, full_name, email, role, city, specialty, password_hash, created_at FROM users WHERE id = ? LIMIT 1",
     )
     .get(id) as UserRow | undefined;
 
@@ -40,7 +42,7 @@ export function getUserByEmail(email: string): (AppUser & { passwordHash: string
   const db = getDb();
   const row = db
     .prepare(
-      "SELECT id, full_name, email, role, city, password_hash, created_at FROM users WHERE email = ? LIMIT 1",
+      "SELECT id, full_name, email, role, city, specialty, password_hash, created_at FROM users WHERE email = ? LIMIT 1",
     )
     .get(email.trim().toLowerCase()) as UserRow | undefined;
 
@@ -59,6 +61,7 @@ export function createUser(input: {
   email: string;
   role: Extract<UserRole, "patient" | "doctor">;
   city: string;
+  specialty?: string;
   password: string;
 }): AppUser {
   const db = getDb();
@@ -69,18 +72,20 @@ export function createUser(input: {
     email: input.email.trim().toLowerCase(),
     role: input.role,
     city: input.city.trim(),
+    specialty: input.specialty?.trim() || "Онкология",
     createdAt: new Date().toISOString(),
   };
 
   db.prepare(
-    `INSERT INTO users (id, full_name, email, role, city, password_hash, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO users (id, full_name, email, role, city, specialty, password_hash, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     user.id,
     user.fullName,
     user.email,
     user.role,
     user.city,
+    user.specialty,
     hashPassword(input.password),
     user.createdAt,
   );
@@ -91,7 +96,9 @@ export function createUser(input: {
 export function listUsers(): AppUser[] {
   const db = getDb();
   const rows = db
-    .prepare("SELECT id, full_name, email, role, city, password_hash, created_at FROM users ORDER BY created_at DESC")
+    .prepare(
+      "SELECT id, full_name, email, role, city, specialty, password_hash, created_at FROM users ORDER BY created_at DESC",
+    )
     .all() as UserRow[];
 
   return rows.map((row) => mapUser(row));

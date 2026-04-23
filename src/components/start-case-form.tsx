@@ -132,7 +132,7 @@ export function StartCaseForm() {
       </label>
 
       <label>
-        Что уже выполнено
+        Что уже выполнено (необязательно)
         <input
           type="text"
           value={form.completedActions}
@@ -150,6 +150,9 @@ export function StartCaseForm() {
           onChange={(event) => setFiles(Array.from(event.target.files ?? []))}
         />
       </label>
+      <p className="form-help-text">
+        Можно заполнить только описание ситуации и приложить документы. Этого достаточно для старта кейса.
+      </p>
 
       {files.length ? (
         <div className="file-list">

@@ -380,6 +380,10 @@ ul {
   margin-top: 0.4rem;
 }
 
+.hero-actions form {
+  margin: 0;
+}
+
 .hero-metric-strip {
   margin-top: 1rem;
   display: grid;
@@ -1770,6 +1774,12 @@ ul {
   gap: 1rem;
 }
 
+.app-page-wide {
+  max-width: 1380px;
+  margin-left: clamp(0.7rem, 1.4vw, 1.6rem);
+  margin-right: auto;
+}
+
 .auth-page {
   min-height: calc(100svh - 10rem);
   padding: 1.2rem;
@@ -1852,6 +1862,24 @@ ul {
   gap: 0.75rem;
 }
 
+.doctor-workspace {
+  display: grid;
+  grid-template-columns: minmax(350px, 0.95fr) minmax(420px, 1.2fr);
+  gap: 0.9rem;
+  align-items: start;
+}
+
+.doctor-cases-column,
+.doctor-chat-column {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.doctor-cases-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
 .dashboard-case-card {
   border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.92);
@@ -1872,9 +1900,42 @@ ul {
   font-size: 1.12rem;
 }
 
+.doctor-case-card {
+  cursor: default;
+}
+
+.doctor-case-select {
+  display: grid;
+  gap: 0.45rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.doctor-case-card-active {
+  border-color: rgba(95, 125, 255, 0.45);
+  box-shadow: 0 14px 32px rgba(52, 76, 148, 0.14);
+}
+
 .dashboard-case-card small {
   color: var(--ink-500);
   font-size: 0.81rem;
+}
+
+.doctor-case-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-700);
+  border-radius: 999px;
+  padding: 0.24rem 0.48rem;
+  border: 1px solid rgba(57, 81, 145, 0.2);
+  background: rgba(255, 255, 255, 0.82);
+  white-space: nowrap;
+}
+
+.doctor-case-status-accepted {
+  color: #0a6944;
+  background: rgba(49, 191, 129, 0.14);
+  border-color: rgba(27, 157, 102, 0.22);
 }
 
 .admin-form {
@@ -1908,6 +1969,7 @@ ul {
 
 .inline-form select,
 .inline-form input,
+.inline-form textarea,
 .case-form select {
   width: 100%;
   border: 1px solid var(--line-soft);
@@ -1918,10 +1980,221 @@ ul {
   font-size: 0.88rem;
 }
 
+.inline-form textarea {
+  resize: vertical;
+}
+
 .doctor-stage-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
+}
+
+.doctor-chat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.doctor-chat-card {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.84);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.doctor-chat-card-modern {
+  gap: 0.75rem;
+  min-height: 680px;
+  grid-template-rows: auto 1fr auto;
+}
+
+.doctor-chat-head h3 {
+  font-size: 1rem;
+}
+
+.doctor-chat-head p {
+  font-size: 0.82rem;
+}
+
+.chat-thread {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.chat-bubble {
+  border-radius: 14px;
+  padding: 0.62rem 0.72rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.chat-bubble header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.chat-bubble header strong {
+  font-size: 0.78rem;
+}
+
+.chat-bubble header small {
+  font-size: 0.72rem;
+  color: var(--ink-500);
+}
+
+.chat-bubble p {
+  font-size: 0.88rem;
+  color: var(--ink-700);
+}
+
+.chat-bubble-doctor {
+  background: rgba(95, 125, 255, 0.14);
+  border: 1px solid rgba(95, 125, 255, 0.3);
+}
+
+.chat-bubble-patient {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(41, 62, 105, 0.2);
+}
+
+.doctor-chat-window {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 460px;
+  overflow: auto;
+  padding: 0.55rem;
+  border-radius: 16px;
+  border: 1px solid rgba(57, 81, 145, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.doctor-chat-empty {
+  color: var(--ink-500);
+  font-size: 0.9rem;
+}
+
+.doctor-chat-row {
+  display: flex;
+}
+
+.doctor-chat-row-patient {
+  justify-content: flex-start;
+}
+
+.doctor-chat-row-doctor {
+  justify-content: flex-end;
+}
+
+.doctor-chat-message {
+  max-width: min(88%, 640px);
+  border-radius: 14px;
+  padding: 0.62rem 0.72rem;
+  display: grid;
+  gap: 0.28rem;
+}
+
+.doctor-chat-message header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+
+.doctor-chat-message header strong {
+  font-size: 0.79rem;
+}
+
+.doctor-chat-message header small {
+  font-size: 0.72rem;
+  color: var(--ink-500);
+  white-space: nowrap;
+}
+
+.doctor-chat-message p {
+  font-size: 0.9rem;
+  line-height: 1.42;
+  color: var(--ink-700);
+}
+
+.doctor-chat-author {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.doctor-chat-message-doctor {
+  background: linear-gradient(140deg, rgba(95, 125, 255, 0.2), rgba(95, 125, 255, 0.12));
+  border: 1px solid rgba(95, 125, 255, 0.34);
+}
+
+.doctor-chat-message-patient {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(41, 62, 105, 0.18);
+}
+
+.doctor-chat-message-recommendation {
+  border-color: rgba(63, 98, 230, 0.6);
+  border-left: 4px solid #4f6bf2;
+  background: linear-gradient(145deg, rgba(95, 125, 255, 0.3), rgba(95, 125, 255, 0.14));
+}
+
+.doctor-chat-message-alternative {
+  border-color: rgba(131, 84, 230, 0.6);
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(145deg, rgba(139, 111, 236, 0.28), rgba(139, 111, 236, 0.12));
+}
+
+.doctor-chat-composer {
+  border-top: 1px solid rgba(57, 81, 145, 0.18);
+  padding-top: 0.7rem;
+  margin-top: 0;
+}
+
+.message-kind-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.16rem 0.48rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.message-kind-badge-recommendation {
+  color: #1f3fa8;
+  background: rgba(95, 125, 255, 0.24);
+  border: 1px solid rgba(79, 107, 242, 0.45);
+}
+
+.message-kind-badge-alternative {
+  color: #5d36b5;
+  background: rgba(139, 111, 236, 0.24);
+  border: 1px solid rgba(139, 92, 246, 0.45);
+}
+
+.chat-header-main {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chat-bubble-recommendation {
+  border-color: rgba(63, 98, 230, 0.58);
+  border-left: 4px solid #4f6bf2;
+  background: linear-gradient(145deg, rgba(95, 125, 255, 0.24), rgba(95, 125, 255, 0.1));
+}
+
+.chat-bubble-alternative {
+  border-color: rgba(131, 84, 230, 0.58);
+  border-left: 4px solid #8b5cf6;
+  background: linear-gradient(145deg, rgba(139, 111, 236, 0.24), rgba(139, 111, 236, 0.1));
 }
 
 .app-top,
@@ -2033,6 +2306,12 @@ ul {
 
 .form-actions p {
   font-size: 0.86rem;
+}
+
+.form-help-text {
+  margin-top: -0.2rem;
+  font-size: 0.82rem;
+  color: var(--ink-500);
 }
 
 .field-error {
@@ -2431,9 +2710,11 @@ ul {
   .hero-grid,
   .journey-grid,
   .product-view,
+  .doctor-workspace,
   .dashboard-cases-grid,
   .dashboard-users-grid,
   .doctor-stage-grid,
+  .doctor-chat-grid,
   .specialist-avatar-grid,
   .care-poster-frame,
   .support-row,
@@ -2444,6 +2725,10 @@ ul {
   .funding-surface,
   .public-grid {
     grid-template-columns: 1fr;
+  }
+
+  .app-page-wide {
+    margin-left: auto;
   }
 
   .hero-visual {

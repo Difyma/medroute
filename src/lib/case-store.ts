@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { buildPrimarySummary, calculateCost, makeBaseRoadmap } from "@/lib/case-templates";
 import { getDb } from "@/lib/db";
 import {
+  DoctorCaseChatThread,
   ClinicDirectoryEntry,
   CreateCaseInput,
   PatientCase,
@@ -10,6 +11,39 @@ import {
   TreatmentStage,
   UserRole,
 } from "@/lib/types";
+
+function resolveMessageKind(params: {
+  messageKind: string | null;
+  body: string;
+}): "comment" | "recommendation" | "alternative-plan" {
+  if (params.messageKind === "recommendation" || params.messageKind === "alternative-plan") {
+    return params.messageKind;
+  }
+
+  if (params.body.startsWith("Рекомендация специалиста:")) {
+    return "recommendation";
+  }
+
+  if (params.body.startsWith("Альтернативный план лечения:")) {
+    return "alternative-plan";
+  }
+
+  return "comment";
+}
+
+function normalizeMessageBody(params: {
+  body: string;
+  messageKind: "comment" | "recommendation" | "alternative-plan";
+}): string {
+  if (params.messageKind === "recommendation" && params.body.startsWith("Рекомендация специалиста:")) {
+    return params.body.replace(/^Рекомендация специалиста:\s*/u, "");
+  }
+  if (params.messageKind === "alternative-plan" && params.body.startsWith("Альтернативный план лечения:")) {
+    return params.body.replace(/^Альтернативный план лечения:\s*/u, "");
+  }
+
+  return params.body;
+}
 
 function slugify(value: string): string {
   return value
@@ -41,6 +75,7 @@ type CaseJoinedRow = {
   slug: string;
   patient_id: string;
   patient_name: string;
+  direction: string;
   age: number;
   city: string;
   diagnosis: string;
@@ -211,6 +246,7 @@ function hydrateCase(base: CaseJoinedRow): PatientCase {
     slug: base.slug,
     patientId: base.patient_id,
     patientName: base.patient_name,
+    direction: base.direction || "Онкология",
     age: base.age,
     city: base.city,
     diagnosis: base.diagnosis,
@@ -268,6 +304,7 @@ function insertCaseGraph(params: {
   slug: string;
   patientId: string;
   patientName: string;
+  direction: string;
   age: number;
   city: string;
   diagnosis: string;
@@ -285,9 +322,9 @@ function insertCaseGraph(params: {
 
   const insertCase = db.prepare(`
     INSERT INTO cases (
-      id, slug, patient_id, patient_name, age, city, diagnosis, current_state,
+      id, slug, patient_id, patient_name, direction, age, city, diagnosis, current_state,
       completed_actions, documents, summary, is_verified, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertVerification = db.prepare(`
@@ -328,6 +365,7 @@ function insertCaseGraph(params: {
       params.slug,
       params.patientId,
       params.patientName,
+      params.direction,
       params.age,
       params.city,
       params.diagnosis,
@@ -488,6 +526,51 @@ export function listAssignedCasesForDoctor(doctorId: string): PatientCase[] {
   return rows.map((row) => hydrateCase(row));
 }
 
+export function listAvailableCasesForDoctor(doctorId: string): Array<{
+  caseData: PatientCase;
+  accepted: boolean;
+}> {
+  const db = getDb();
+  const doctor = db
+    .prepare("SELECT specialty FROM users WHERE id = ? LIMIT 1")
+    .get(doctorId) as { specialty: string } | undefined;
+
+  const specialty = doctor?.specialty?.trim() || "Онкология";
+  const rows = db
+    .prepare(
+      `SELECT
+        c.*,
+        f.current_stage_key,
+        f.target,
+        f.raised,
+        v.documents_are_readable,
+        v.diagnosis_matches_documents,
+        v.patient_identity_confirmed,
+        v.fundraising_goal_validated,
+        v.reviewed_by,
+        v.reviewed_at
+      FROM cases c
+      LEFT JOIN fundraising f ON f.case_id = c.id
+      LEFT JOIN verification v ON v.case_id = c.id
+      WHERE c.direction = ? OR ? = ''
+      ORDER BY c.created_at DESC`,
+    )
+    .all(specialty, specialty) as CaseJoinedRow[];
+
+  const acceptedCaseIds = new Set(
+    (
+      db
+        .prepare("SELECT case_id AS caseId FROM doctor_case_chats WHERE doctor_id = ?")
+        .all(doctorId) as Array<{ caseId: string }>
+    ).map((item) => item.caseId),
+  );
+
+  return rows.map((row) => ({
+    caseData: hydrateCase(row),
+    accepted: acceptedCaseIds.has(row.id),
+  }));
+}
+
 export function getCase(idOrSlug: string): PatientCase | undefined {
   const row = getCaseBase("(c.id = ? OR c.slug = ?)", [idOrSlug, idOrSlug]);
   if (!row) {
@@ -508,6 +591,7 @@ export function createCase(input: CreateCaseInput, patientId: string): PatientCa
     slug,
     patientId,
     patientName: input.patientName,
+    direction: "Онкология",
     age: input.age,
     city: input.city,
     diagnosis: input.diagnosis,
@@ -727,6 +811,162 @@ export function assignDoctorToCase(params: {
     params.caseId,
     params.stageKey ?? null,
     params.note ?? "",
+    new Date().toISOString(),
+  );
+}
+
+export function acceptCaseForDoctor(params: { doctorId: string; caseId: string }): string {
+  const db = getDb();
+  const now = new Date().toISOString();
+
+  const existing = db
+    .prepare("SELECT id FROM doctor_case_chats WHERE case_id = ? AND doctor_id = ? LIMIT 1")
+    .get(params.caseId, params.doctorId) as { id: string } | undefined;
+
+  if (existing) {
+    return existing.id;
+  }
+
+  const chatId = randomUUID();
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      "INSERT OR IGNORE INTO doctor_assignments (id, doctor_id, case_id, stage_key, note, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run(randomUUID(), params.doctorId, params.caseId, "general", "Кейс принят врачом для консультации", now);
+
+    db.prepare("INSERT INTO doctor_case_chats (id, case_id, doctor_id, created_at) VALUES (?, ?, ?, ?)").run(
+      chatId,
+      params.caseId,
+      params.doctorId,
+      now,
+    );
+  });
+
+  tx();
+  return chatId;
+}
+
+export function listCaseDoctorChats(caseId: string): DoctorCaseChatThread[] {
+  const db = getDb();
+  const chats = db
+    .prepare(
+      `SELECT
+        c.id,
+        c.case_id AS caseId,
+        c.doctor_id AS doctorId,
+        c.created_at AS createdAt,
+        u.full_name AS doctorName,
+        u.email AS doctorEmail
+      FROM doctor_case_chats c
+      JOIN users u ON u.id = c.doctor_id
+      WHERE c.case_id = ?
+      ORDER BY c.created_at ASC`,
+    )
+    .all(caseId) as Array<{
+    id: string;
+    caseId: string;
+    doctorId: string;
+    createdAt: string;
+    doctorName: string;
+    doctorEmail: string;
+  }>;
+
+  if (chats.length === 0) {
+    return [];
+  }
+
+  const messages = db
+    .prepare(
+      `SELECT
+        id,
+        chat_id AS chatId,
+        sender_role AS senderRole,
+        message_kind AS messageKind,
+        sender_name AS senderName,
+        body,
+        created_at AS createdAt
+      FROM doctor_case_messages
+      WHERE chat_id IN (${chats.map(() => "?").join(",")})
+      ORDER BY created_at ASC`,
+    )
+    .all(...chats.map((item) => item.id)) as Array<{
+    id: string;
+    chatId: string;
+    senderRole: "doctor" | "patient";
+    messageKind: string | null;
+    senderName: string;
+    body: string;
+    createdAt: string;
+  }>;
+
+  const byChat = new Map<string, DoctorCaseChatThread["messages"]>();
+  for (const message of messages) {
+    const messageKind = resolveMessageKind({
+      messageKind: message.messageKind,
+      body: message.body,
+    });
+    const list = byChat.get(message.chatId) ?? [];
+    list.push({
+      id: message.id,
+      senderRole: message.senderRole,
+      messageKind,
+      senderName: message.senderName,
+      body: normalizeMessageBody({ body: message.body, messageKind }),
+      createdAt: message.createdAt,
+    });
+    byChat.set(message.chatId, list);
+  }
+
+  return chats.map((chat) => ({
+    id: chat.id,
+    caseId: chat.caseId,
+    doctorId: chat.doctorId,
+    doctorName: chat.doctorName,
+    doctorEmail: chat.doctorEmail,
+    createdAt: chat.createdAt,
+    messages: byChat.get(chat.id) ?? [],
+  }));
+}
+
+export function isDoctorInChat(chatId: string, doctorId: string): boolean {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT id FROM doctor_case_chats WHERE id = ? AND doctor_id = ? LIMIT 1")
+    .get(chatId, doctorId) as { id: string } | undefined;
+  return Boolean(row);
+}
+
+export function isPatientInChat(chatId: string, patientId: string): boolean {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT c.id
+       FROM doctor_case_chats c
+       JOIN cases p ON p.id = c.case_id
+       WHERE c.id = ? AND p.patient_id = ?
+       LIMIT 1`,
+    )
+    .get(chatId, patientId) as { id: string } | undefined;
+  return Boolean(row);
+}
+
+export function addChatMessage(params: {
+  chatId: string;
+  senderRole: "doctor" | "patient";
+  messageKind?: "comment" | "recommendation" | "alternative-plan";
+  senderName: string;
+  body: string;
+}) {
+  const db = getDb();
+  db.prepare(
+    "INSERT INTO doctor_case_messages (id, chat_id, sender_role, message_kind, sender_name, body, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    randomUUID(),
+    params.chatId,
+    params.senderRole,
+    params.messageKind ?? "comment",
+    params.senderName,
+    params.body,
     new Date().toISOString(),
   );
 }

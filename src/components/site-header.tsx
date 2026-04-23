@@ -18,10 +18,10 @@ export async function SiteHeader() {
         <Link href="/" className="brand-mark">
           <span className="brand-mark-graphic">
             <img
-              src="/style/logomedroute-Photoroom.png"
-              alt=""
-              width={60}
-              height={60}
+              src="/brand/logomedroute-icon-512.png"
+              alt="Логотип MedRoute"
+              width={36}
+              height={36}
               className="brand-mark-logo"
               decoding="async"
               fetchPriority="high"

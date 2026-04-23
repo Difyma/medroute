@@ -22,6 +22,7 @@ type DbUserSeed = {
   email: string;
   role: UserRole;
   city: string;
+  specialty: string;
   password: string;
 };
 
@@ -39,6 +40,7 @@ function initSchema(db: Database.Database) {
       email TEXT NOT NULL UNIQUE,
       role TEXT NOT NULL CHECK(role IN ('patient', 'doctor', 'admin')),
       city TEXT NOT NULL DEFAULT '',
+      specialty TEXT NOT NULL DEFAULT 'Онкология',
       password_hash TEXT NOT NULL,
       created_at TEXT NOT NULL
     );
@@ -57,6 +59,7 @@ function initSchema(db: Database.Database) {
       slug TEXT NOT NULL UNIQUE,
       patient_id TEXT NOT NULL,
       patient_name TEXT NOT NULL,
+      direction TEXT NOT NULL DEFAULT 'Онкология',
       age INTEGER NOT NULL,
       city TEXT NOT NULL,
       diagnosis TEXT NOT NULL,
@@ -152,6 +155,27 @@ function initSchema(db: Database.Database) {
       UNIQUE (doctor_id, case_id, stage_key)
     );
 
+    CREATE TABLE IF NOT EXISTS doctor_case_chats (
+      id TEXT PRIMARY KEY,
+      case_id TEXT NOT NULL,
+      doctor_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (case_id) REFERENCES cases(id) ON DELETE CASCADE,
+      FOREIGN KEY (doctor_id) REFERENCES users(id) ON DELETE CASCADE,
+      UNIQUE (case_id, doctor_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS doctor_case_messages (
+      id TEXT PRIMARY KEY,
+      chat_id TEXT NOT NULL,
+      sender_role TEXT NOT NULL CHECK(sender_role IN ('doctor', 'patient')),
+      message_kind TEXT NOT NULL DEFAULT 'comment' CHECK(message_kind IN ('comment', 'recommendation', 'alternative-plan')),
+      sender_name TEXT NOT NULL,
+      body TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (chat_id) REFERENCES doctor_case_chats(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS clinics (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -171,7 +195,28 @@ function initSchema(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_assignments_case ON doctor_assignments(case_id);
     CREATE INDEX IF NOT EXISTS idx_assignments_doctor ON doctor_assignments(doctor_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+    CREATE INDEX IF NOT EXISTS idx_chats_case ON doctor_case_chats(case_id);
+    CREATE INDEX IF NOT EXISTS idx_chats_doctor ON doctor_case_chats(doctor_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_chat ON doctor_case_messages(chat_id);
   `);
+}
+
+function ensureColumn(
+  db: Database.Database,
+  table: string,
+  column: string,
+  sqlTypeAndDefault: string,
+) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  if (!columns.some((item) => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${sqlTypeAndDefault}`);
+  }
+}
+
+function runMigrations(db: Database.Database) {
+  ensureColumn(db, "users", "specialty", "TEXT NOT NULL DEFAULT 'Онкология'");
+  ensureColumn(db, "cases", "direction", "TEXT NOT NULL DEFAULT 'Онкология'");
+  ensureColumn(db, "doctor_case_messages", "message_kind", "TEXT NOT NULL DEFAULT 'comment'");
 }
 
 function seedUsers(db: Database.Database): DbUserSeed[] {
@@ -179,7 +224,7 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
   if (existingUsers.count > 0) {
     const rows = db
       .prepare(
-        "SELECT id, full_name as fullName, email, role, city FROM users WHERE email IN (?, ?, ?)",
+        "SELECT id, full_name as fullName, email, role, city, specialty FROM users WHERE email IN (?, ?, ?)",
       )
       .all(DEMO_CREDENTIALS.patient.email, DEMO_CREDENTIALS.doctor.email, DEMO_CREDENTIALS.admin.email) as Array<{
       id: string;
@@ -187,6 +232,7 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
       email: string;
       role: UserRole;
       city: string;
+      specialty: string;
     }>;
 
     return rows.map((row) => ({ ...row, password: "" }));
@@ -200,6 +246,7 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
       email: DEMO_CREDENTIALS.patient.email,
       role: "patient",
       city: "Казань",
+      specialty: "Онкология",
       password: DEMO_CREDENTIALS.patient.password,
     },
     {
@@ -208,6 +255,7 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
       email: DEMO_CREDENTIALS.doctor.email,
       role: "doctor",
       city: "Москва",
+      specialty: "Онкология",
       password: DEMO_CREDENTIALS.doctor.password,
     },
     {
@@ -216,13 +264,14 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
       email: DEMO_CREDENTIALS.admin.email,
       role: "admin",
       city: "Москва",
+      specialty: "Онкология",
       password: DEMO_CREDENTIALS.admin.password,
     },
   ];
 
   const insertUser = db.prepare(`
-    INSERT INTO users (id, full_name, email, role, city, password_hash, created_at)
-    VALUES (@id, @fullName, @email, @role, @city, @passwordHash, @createdAt)
+    INSERT INTO users (id, full_name, email, role, city, specialty, password_hash, created_at)
+    VALUES (@id, @fullName, @email, @role, @city, @specialty, @passwordHash, @createdAt)
   `);
 
   const insertMany = db.transaction((items: DbUserSeed[]) => {
@@ -233,6 +282,7 @@ function seedUsers(db: Database.Database): DbUserSeed[] {
         email: item.email,
         role: item.role,
         city: item.city,
+        specialty: item.specialty,
         passwordHash: hashPassword(item.password),
         createdAt: now,
       });
@@ -352,10 +402,10 @@ function seedDemoCase(db: Database.Database, patientId: string, doctorId: string
 
   const insertCase = db.prepare(`
     INSERT INTO cases (
-      id, slug, patient_id, patient_name, age, city, diagnosis, current_state,
+      id, slug, patient_id, patient_name, direction, age, city, diagnosis, current_state,
       completed_actions, documents, summary, is_verified, created_at, updated_at
     ) VALUES (
-      @id, @slug, @patientId, @patientName, @age, @city, @diagnosis, @currentState,
+      @id, @slug, @patientId, @patientName, @direction, @age, @city, @diagnosis, @currentState,
       @completedActions, @documents, @summary, @isVerified, @createdAt, @updatedAt
     )
   `);
@@ -407,12 +457,23 @@ function seedDemoCase(db: Database.Database, patientId: string, doctorId: string
     VALUES (?, ?, ?, ?, ?, ?)
   `);
 
+  const insertChat = db.prepare(`
+    INSERT INTO doctor_case_chats (id, case_id, doctor_id, created_at)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const insertMessage = db.prepare(`
+    INSERT INTO doctor_case_messages (id, chat_id, sender_role, message_kind, sender_name, body, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
   const tx = db.transaction(() => {
     insertCase.run({
       id: "case-demo-onco",
       slug: "aleksei-kazantsev-onco-route",
       patientId,
       patientName: "Алексей Казанцев",
+      direction: "Онкология",
       age: 43,
       city: "Казань",
       diagnosis: "Аденокарцинома ободочной кишки IIIB стадия",
@@ -526,6 +587,203 @@ function seedDemoCase(db: Database.Database, patientId: string, doctorId: string
       "Ведущий врач по консилиуму и хирургическому этапу",
       now,
     );
+
+    const chatId = randomUUID();
+    insertChat.run(chatId, "case-demo-onco", doctorId, now);
+    insertMessage.run(
+      randomUUID(),
+      chatId,
+      "doctor",
+      "recommendation",
+      "Илья Рощин",
+      "Изучил выписки. Рекомендую завершить консилиум в ближайшие 3 дня и подготовить пакет документов для хирургического этапа.",
+      now,
+    );
+  });
+
+  tx();
+}
+
+function seedAdditionalDoctorCases(db: Database.Database, patientId: string, doctorId: string) {
+  const now = new Date().toISOString();
+
+  const insertCase = db.prepare(`
+    INSERT INTO cases (
+      id, slug, patient_id, patient_name, direction, age, city, diagnosis, current_state,
+      completed_actions, documents, summary, is_verified, created_at, updated_at
+    ) VALUES (
+      @id, @slug, @patientId, @patientName, @direction, @age, @city, @diagnosis, @currentState,
+      @completedActions, @documents, @summary, @isVerified, @createdAt, @updatedAt
+    )
+  `);
+
+  const insertVerification = db.prepare(`
+    INSERT INTO verification (
+      case_id, documents_are_readable, diagnosis_matches_documents, patient_identity_confirmed,
+      fundraising_goal_validated, reviewed_by, reviewed_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertFundraising = db.prepare(
+    "INSERT INTO fundraising (case_id, current_stage_key, target, raised) VALUES (?, ?, ?, ?)",
+  );
+
+  const insertUpdate = db.prepare(`
+    INSERT INTO case_updates (id, case_id, date, kind, title, body, reactions, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertAssignment = db.prepare(`
+    INSERT INTO doctor_assignments (id, doctor_id, case_id, stage_key, note, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  const insertChat = db.prepare(`
+    INSERT INTO doctor_case_chats (id, case_id, doctor_id, created_at)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const insertMessage = db.prepare(`
+    INSERT INTO doctor_case_messages (id, chat_id, sender_role, message_kind, sender_name, body, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const additionalCases = [
+    {
+      id: "case-demo-breast",
+      slug: "elena-voronina-onco-route",
+      patientName: "Елена Воронина",
+      age: 36,
+      city: "Самара",
+      diagnosis: "Рак молочной железы II стадия",
+      currentState: "Завершена диагностика, ожидается начало системной терапии.",
+      completedActions: ["МРТ", "Биопсия", "Консилиум"],
+      documents: ["Заключение_МРТ.pdf", "Гистология_15_04_2026.pdf"],
+      summary: buildPrimarySummary({
+        diagnosis: "Рак молочной железы II стадия",
+        currentState: "Завершена диагностика, ожидается начало системной терапии.",
+        city: "Самара",
+      }),
+      createdAt: "2026-04-21T10:10:00.000Z",
+      updateTitle: "Кейс добавлен в систему",
+      updateBody: "Пациент загрузил документы и ожидает консультационные рекомендации.",
+      fundraisingTarget: 360_000,
+      fundraisingRaised: 45_000,
+      acceptedByDoctor: false,
+      chatMessages: [],
+    },
+    {
+      id: "case-demo-lymphoma",
+      slug: "maksim-frolov-lymphoma-route",
+      patientName: "Максим Фролов",
+      age: 29,
+      city: "Екатеринбург",
+      diagnosis: "Лимфома Ходжкина IIB стадия",
+      currentState: "Идет курс терапии, требуется корректировка плана восстановления.",
+      completedActions: ["ПЭТ-КТ", "Первый курс терапии"],
+      documents: ["Выписка_пэт_кт.pdf", "План_терапии.pdf"],
+      summary: buildPrimarySummary({
+        diagnosis: "Лимфома Ходжкина IIB стадия",
+        currentState: "Идет курс терапии, требуется корректировка плана восстановления.",
+        city: "Екатеринбург",
+      }),
+      createdAt: "2026-04-22T08:05:00.000Z",
+      updateTitle: "Поступил запрос на второе мнение",
+      updateBody: "Семья запрашивает рекомендации по восстановлению между курсами терапии.",
+      fundraisingTarget: 290_000,
+      fundraisingRaised: 112_000,
+      acceptedByDoctor: true,
+      chatMessages: [
+        {
+          senderRole: "patient",
+          messageKind: "comment",
+          senderName: "Пациент Demo",
+          body: "После первого курса тяжело восстановиться. Что важно сделать до следующего этапа?",
+          createdAt: "2026-04-22T09:20:00.000Z",
+        },
+        {
+          senderRole: "doctor",
+          messageKind: "recommendation",
+          senderName: "Илья Рощин",
+          body: "Нужен контроль анализов крови, щадящий режим и оценка переносимости терапии через 48 часов.",
+          createdAt: "2026-04-22T09:36:00.000Z",
+        },
+        {
+          senderRole: "doctor",
+          messageKind: "alternative-plan",
+          senderName: "Илья Рощин",
+          body: "Если показатели проседают, предлагаю перенести следующий курс на 5-7 дней и усилить восстановительный этап.",
+          createdAt: "2026-04-22T09:52:00.000Z",
+        },
+      ],
+    },
+  ] as const;
+
+  const tx = db.transaction(() => {
+    for (const item of additionalCases) {
+      const existing = db.prepare("SELECT id FROM cases WHERE id = ? LIMIT 1").get(item.id) as
+        | { id: string }
+        | undefined;
+      if (existing) {
+        continue;
+      }
+
+      insertCase.run({
+        id: item.id,
+        slug: item.slug,
+        patientId,
+        patientName: item.patientName,
+        direction: "Онкология",
+        age: item.age,
+        city: item.city,
+        diagnosis: item.diagnosis,
+        currentState: item.currentState,
+        completedActions: JSON.stringify(item.completedActions),
+        documents: JSON.stringify(item.documents),
+        summary: item.summary,
+        isVerified: 1,
+        createdAt: item.createdAt,
+        updatedAt: now,
+      });
+
+      insertVerification.run(item.id, 1, 1, 1, 1, "Модератор Анна К.", "2026-04-22");
+      insertFundraising.run(item.id, "therapy", item.fundraisingTarget, item.fundraisingRaised);
+      insertUpdate.run(
+        randomUUID(),
+        item.id,
+        "2026-04-22",
+        "general",
+        item.updateTitle,
+        item.updateBody,
+        0,
+        now,
+      );
+
+      if (item.acceptedByDoctor) {
+        insertAssignment.run(
+          randomUUID(),
+          doctorId,
+          item.id,
+          "general",
+          "Кейс принят врачом для консультации",
+          now,
+        );
+
+        const chatId = randomUUID();
+        insertChat.run(chatId, item.id, doctorId, now);
+        for (const message of item.chatMessages ?? []) {
+          insertMessage.run(
+            randomUUID(),
+            chatId,
+            message.senderRole,
+            message.messageKind,
+            message.senderName,
+            message.body,
+            message.createdAt,
+          );
+        }
+      }
+    }
   });
 
   tx();
@@ -538,6 +796,7 @@ function seedDatabase(db: Database.Database) {
 
   if (patient && doctor) {
     seedDemoCase(db, patient.id, doctor.id);
+    seedAdditionalDoctorCases(db, patient.id, doctor.id);
   }
 
   seedClinics(db);
@@ -551,6 +810,7 @@ function createConnection(): Database.Database {
   db.pragma("journal_mode = WAL");
 
   initSchema(db);
+  runMigrations(db);
   seedDatabase(db);
 
   return db;
